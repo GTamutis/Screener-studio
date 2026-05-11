@@ -1,31 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { SignOutButton } from "@clerk/nextjs";
+import { Sparkles } from "lucide-react";
+
+import { UserMenu } from "@/components/ui/glass/user-menu";
 
 export function WorkspaceHeader({ displayName }: { displayName: string }) {
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-border/40 bg-background/40 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/workspace"
-          className="text-sm font-semibold text-slate-900"
+          className="group inline-flex items-center gap-2 rounded-full px-2 py-1"
         >
-          Workspace
-        </Link>
-        <div className="flex items-center gap-4">
-          <span className="max-w-[220px] truncate text-sm text-slate-600 sm:max-w-md">
-            {displayName}
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-glow-primary">
+            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
           </span>
-          <SignOutButton signOutOptions={{ redirectUrl: "/sign-in" }}>
-            <button
-              type="button"
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
-            >
-              Sign out
-            </button>
-          </SignOutButton>
-        </div>
+          <span className="text-sm font-semibold tracking-tight text-foreground">
+            Workspace
+          </span>
+        </Link>
+        <UserMenu displayName={displayName} />
       </div>
     </header>
   );

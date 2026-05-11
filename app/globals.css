@@ -2,53 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground: #0f172a;
-  --gradient-subtle: linear-gradient(
-    135deg,
-    #f8fafc 0%,
-    #eef2ff 45%,
-    #f1f5f9 100%
-  );
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground: #e2e8f0;
-    --gradient-subtle: linear-gradient(
-      135deg,
-      #0b1220 0%,
-      #111827 50%,
-      #0f172a 100%
-    );
+    --background: 220 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 250 84% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 18%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 250 84% 60%;
+
+    --radius: 0.875rem;
+
+    --brand-from: 245 90% 64%;
+    --brand-via: 295 90% 64%;
+    --brand-to: 195 95% 56%;
+
+    --glass-highlight: 0 0% 100%;
+    --glass-surface: 0 0% 100%;
+    --glass-surface-alpha: 0.65;
+    --glass-border: 220 30% 90%;
+    --glass-border-alpha: 0.8;
+
+    --mesh: var(--mesh-light, none);
+  }
+
+  .dark {
+    --background: 232 36% 7%;
+    --foreground: 220 20% 92%;
+
+    --card: 230 30% 10%;
+    --card-foreground: 220 20% 95%;
+
+    --popover: 230 30% 10%;
+    --popover-foreground: 220 20% 95%;
+
+    --primary: 250 90% 70%;
+    --primary-foreground: 230 40% 10%;
+
+    --secondary: 230 25% 16%;
+    --secondary-foreground: 220 20% 92%;
+
+    --muted: 230 25% 16%;
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 230 25% 18%;
+    --accent-foreground: 220 20% 95%;
+
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 230 25% 20%;
+    --input: 230 25% 20%;
+    --ring: 250 90% 70%;
+
+    --brand-from: 250 90% 68%;
+    --brand-via: 295 85% 68%;
+    --brand-to: 195 90% 62%;
+
+    --glass-highlight: 230 40% 80%;
+    --glass-surface: 230 30% 14%;
+    --glass-surface-alpha: 0.55;
+    --glass-border: 230 30% 35%;
+    --glass-border-alpha: 0.45;
   }
 }
 
-body {
-  color: var(--foreground);
-  background-image: var(--gradient-subtle);
-  background-attachment: fixed;
-  min-height: 100vh;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    min-height: 100vh;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  *:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)),
+      0 0 0 4px hsl(var(--ring) / 0.65);
+    border-radius: 0.5rem;
+  }
 }
 
-/*
- * UI uses light surfaces (white inputs) while body color follows prefers-color-scheme.
- * Without this, dark-mode OS paints inherited light-grey text on white fields.
- */
+@layer components {
+  .glass-surface {
+    background-color: hsl(var(--glass-surface) / var(--glass-surface-alpha));
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-alpha));
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  .glass-surface-strong {
+    background-color: hsl(var(--glass-surface) / 0.85);
+    border: 1px solid hsl(var(--glass-border) / 0.6);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+  }
+
+  .glass-input {
+    background-color: hsl(var(--card) / 0.85);
+    border: 1px solid hsl(var(--border));
+    backdrop-filter: blur(8px);
+  }
+
+  .glass-input:focus,
+  .glass-input:focus-visible {
+    border-color: hsl(var(--ring) / 0.6);
+    box-shadow: 0 0 0 4px hsl(var(--ring) / 0.15);
+    outline: none;
+  }
+
+  .text-gradient {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--brand-from)) 0%,
+      hsl(var(--brand-via)) 50%,
+      hsl(var(--brand-to)) 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+}
+
 @layer base {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
       [type="file"]
     ),
   textarea,
   select {
-    color: rgb(15 23 42);
-    caret-color: rgb(15 23 42);
+    color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: rgb(148 163 184);
+    color: hsl(var(--muted-foreground));
     opacity: 1;
   }
 
@@ -58,13 +207,19 @@ body {
   textarea:-webkit-autofill,
   textarea:-webkit-autofill:hover,
   textarea:-webkit-autofill:focus {
-    -webkit-text-fill-color: rgb(15 23 42);
-    caret-color: rgb(15 23 42);
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-in-out 0s;
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

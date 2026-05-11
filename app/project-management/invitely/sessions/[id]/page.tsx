@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+
 import { getInviteSessionForPm } from "@/app/actions/invitely";
 import { InvitelySessionDetail } from "@/components/invitely/invitely-session-detail";
+import { GlassCard } from "@/components/ui/glass/glass-card";
 
 export async function generateMetadata({
   params,
@@ -18,6 +21,35 @@ export async function generateMetadata({
   }
 }
 
+function ErrorShell({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <GlassCard className="flex flex-col items-start gap-4 p-8">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+        <AlertTriangle className="h-5 w-5" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-base font-semibold tracking-tight text-foreground">
+          {title}
+        </p>
+        <p className="text-sm text-muted-foreground">{message}</p>
+      </div>
+      <Link
+        href="/project-management/invitely"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Invitely
+      </Link>
+    </GlassCard>
+  );
+}
+
 export default async function InvitelySessionPage({
   params,
 }: {
@@ -29,18 +61,7 @@ export default async function InvitelySessionPage({
   } catch (e) {
     const message =
       e instanceof Error ? e.message : "Could not reach Invitely storage.";
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950 shadow-sm">
-        <p className="font-semibold">Could not load session</p>
-        <p className="mt-2">{message}</p>
-        <Link
-          href="/project-management/invitely"
-          className="mt-4 inline-block text-sm font-semibold text-blue-950 underline"
-        >
-          Back to Invitely
-        </Link>
-      </div>
-    );
+    return <ErrorShell title="Could not load session" message={message} />;
   }
 
   if ("error" in detail) {
@@ -48,15 +69,7 @@ export default async function InvitelySessionPage({
       notFound();
     }
     return (
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-800 shadow-sm">
-        <p>{detail.error}</p>
-        <Link
-          href="/project-management/invitely"
-          className="mt-4 inline-block text-sm font-semibold text-blue-950 underline"
-        >
-          Back to Invitely
-        </Link>
-      </div>
+      <ErrorShell title="Could not load session" message={detail.error} />
     );
   }
 
