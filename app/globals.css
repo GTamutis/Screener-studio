@@ -32,6 +32,37 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/*
+ * UI uses light surfaces (white inputs) while body color follows prefers-color-scheme.
+ * Without this, dark-mode OS paints inherited light-grey text on white fields.
+ */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="file"]
+    ),
+  textarea,
+  select {
+    color: rgb(15 23 42);
+    caret-color: rgb(15 23 42);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(148 163 184);
+    opacity: 1;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: rgb(15 23 42);
+    caret-color: rgb(15 23 42);
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

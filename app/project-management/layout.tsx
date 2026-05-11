@@ -2,7 +2,10 @@ import { currentUser } from "@clerk/nextjs/server";
 import { SectionShell } from "@/components/section-shell";
 import { formatUserDisplayName } from "@/lib/format-display-name";
 
-const NAV_ITEMS = [{ href: "/project-management", label: "Overview" }] as const;
+const NAV_ITEMS = [
+  { href: "/project-management", label: "Overview" },
+  { href: "/project-management/invitely", label: "Invitely" },
+] as const;
 
 export default async function ProjectManagementLayout({
   children,
