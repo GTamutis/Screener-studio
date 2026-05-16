@@ -35,6 +35,32 @@ function invitePath(sessionId: string) {
   return `/invite/${sessionId}`;
 }
 
+type SaveOptions = { silentToast?: boolean };
+
+type AttendeeSavePayload = Pick<
+  InvitelyAttendee,
+  "id" | "name" | "email" | "inviteAll" | "selectedCountries"
+>;
+
+function sameCountries(a: readonly string[], b: readonly string[]) {
+  return (
+    a.length === b.length &&
+    a.every((country, index) => country === b[index])
+  );
+}
+
+function attendeeMatchesPayload(
+  attendee: InvitelyAttendee,
+  payload: AttendeeSavePayload,
+) {
+  return (
+    attendee.name === payload.name &&
+    attendee.email === payload.email &&
+    attendee.inviteAll === payload.inviteAll &&
+    sameCountries(attendee.selectedCountries, payload.selectedCountries)
+  );
+}
+
 export function InviteSessionClient({ sessionId }: { sessionId: string }) {
   const [phase, setPhase] = useState<"locked" | "open">("locked");
   const [actorName, setActorName] = useState("");
@@ -54,44 +80,96 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
   attendeesRef.current = attendees;
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const inFlightSaves = useRef<Record<string, boolean>>({});
+  const queuedSaves = useRef<Record<string, InvitelyAttendee>>({});
+  const saveRowRef = useRef<
+    (row: InvitelyAttendee, opts?: SaveOptions) => Promise<boolean>
+  >();
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
-  const flushSave = useCallback(
-    async (attendeeId: string) => {
+  const saveRow = useCallback(
+    async (
+      row: InvitelyAttendee,
+      opts?: SaveOptions,
+    ): Promise<boolean> => {
+      const attendeeId = row.id;
       const pending = saveTimers.current[attendeeId];
       if (pending) {
         clearTimeout(pending);
         delete saveTimers.current[attendeeId];
       }
 
-      const row = attendeesRef.current.find((a) => a.id === attendeeId);
-      if (!row) return;
+      if (inFlightSaves.current[attendeeId]) {
+        queuedSaves.current[attendeeId] = row;
+        return false;
+      }
 
-      const res = await clientUpdateAttendee({
-        sessionId,
-        password,
-        actorName,
-        attendeeId: row.id,
+      const payload: AttendeeSavePayload = {
+        id: row.id,
         name: row.name,
         email: row.email,
         inviteAll: row.inviteAll,
-        selectedCountries: row.selectedCountries,
-      });
+        selectedCountries: [...row.selectedCountries],
+      };
 
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
+      inFlightSaves.current[attendeeId] = true;
+
+      try {
+        const res = await clientUpdateAttendee({
+          sessionId,
+          password,
+          actorName,
+          attendeeId: payload.id,
+          name: payload.name,
+          email: payload.email,
+          inviteAll: payload.inviteAll,
+          selectedCountries: payload.selectedCountries,
+        });
+
+        if (!res.ok) {
+          toast.error(res.error);
+          return false;
+        }
+
+        const latest =
+          queuedSaves.current[attendeeId] ??
+          attendeesRef.current.find((a) => a.id === attendeeId);
+        if (!latest) return true;
+
+        if (!attendeeMatchesPayload(latest, payload)) {
+          queuedSaves.current[attendeeId] = latest;
+        } else {
+          delete queuedSaves.current[attendeeId];
+          setAttendees((prev) =>
+            prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
+          );
+          if (!opts?.silentToast) toast.success("Saved");
+        }
+
+        return true;
+      } finally {
+        inFlightSaves.current[attendeeId] = false;
+        const queued = queuedSaves.current[attendeeId];
+        if (queued) {
+          delete queuedSaves.current[attendeeId];
+          void saveRowRef.current?.(queued, opts);
+        }
       }
-
-      setAttendees((prev) =>
-        prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
-      );
-      toast.success("Saved");
     },
     [actorName, password, sessionId],
+  );
+  saveRowRef.current = saveRow;
+
+  const flushSave = useCallback(
+    async (attendeeId: string, opts?: SaveOptions) => {
+      const row = attendeesRef.current.find((a) => a.id === attendeeId);
+      if (!row) return false;
+      return saveRow(row, opts);
+    },
+    [saveRow],
   );
 
   const scheduleSave = useCallback(
@@ -103,36 +181,6 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
       }, 450);
     },
     [flushSave],
-  );
-
-  const persistImmediate = useCallback(
-    async (
-      nextRow: InvitelyAttendee,
-      opts?: { silentToast?: boolean },
-    ): Promise<boolean> => {
-      const res = await clientUpdateAttendee({
-        sessionId,
-        password,
-        actorName,
-        attendeeId: nextRow.id,
-        name: nextRow.name,
-        email: nextRow.email,
-        inviteAll: nextRow.inviteAll,
-        selectedCountries: nextRow.selectedCountries,
-      });
-
-      if (!res.ok) {
-        toast.error(res.error);
-        return false;
-      }
-
-      setAttendees((prev) =>
-        prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
-      );
-      if (!opts?.silentToast) toast.success("Saved");
-      return true;
-    },
-    [actorName, password, sessionId],
   );
 
   const handleUnlock = async (e: React.FormEvent) => {
@@ -456,7 +504,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                                 a.id === row.id ? next : a,
                               ),
                             );
-                            await persistImmediate(next);
+                            await saveRow(next);
                           }}
                           aria-label="Invite to all countries"
                         />
@@ -491,7 +539,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                                     a.id === row.id ? nextRow : a,
                                   ),
                                 );
-                                await persistImmediate(nextRow);
+                                await saveRow(nextRow);
                               }}
                               aria-label={`Invite to ${c}`}
                             />
