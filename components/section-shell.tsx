@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Sparkles } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
+import { DayOneMark } from "@/components/brand/day-one-mark";
 import { UserMenu } from "@/components/ui/glass/user-menu";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +47,8 @@ export function SectionShell({
               href={brandHref}
               className="group inline-flex items-center gap-2"
             >
-              <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-glow-primary">
-                <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
+              <span className="relative flex h-7 w-7 shrink-0 items-center justify-center text-foreground">
+                <DayOneMark className="h-6 w-6" decorative />
               </span>
               <span className="text-sm font-semibold tracking-tight text-foreground">
                 {brandLabel}

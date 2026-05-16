@@ -35,11 +35,11 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "DOS Workspace",
-    template: "%s · DOS Workspace",
+    default: "Day One Strategy",
+    template: "%s · Day One Strategy",
   },
   description:
-    "One workspace for project setup, screener writing, quotas, invitations, and delivery.",
+    "Day One Strategy workspace — project setup, screener workflows, quotas, invitations, and delivery.",
 };
 
 export default function RootLayout({
