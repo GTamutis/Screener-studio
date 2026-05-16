@@ -18,8 +18,18 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        sans: [
+          "var(--font-inter)",
+          "var(--font-geist-sans)",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: [
+          "var(--font-jetbrains-mono)",
+          "var(--font-geist-mono)",
+          "ui-monospace",
+          "monospace",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -64,21 +74,21 @@ const config: Config = {
       },
       boxShadow: {
         glass:
-          "0 1px 0 0 hsl(var(--glass-highlight) / 0.6) inset, 0 20px 60px -20px hsl(220 50% 10% / 0.25), 0 8px 30px -12px hsl(280 60% 30% / 0.18)",
+          "0 1px 0 0 hsl(var(--glass-highlight) / 0.55) inset, 0 24px 48px -24px hsl(215 52% 25% / 0.14), 0 8px 24px -12px hsl(215 45% 20% / 0.1)",
         "glass-sm":
-          "0 1px 0 0 hsl(var(--glass-highlight) / 0.5) inset, 0 8px 24px -12px hsl(220 50% 10% / 0.2)",
+          "0 1px 0 0 hsl(var(--glass-highlight) / 0.45) inset, 0 8px 20px -12px hsl(215 52% 25% / 0.1)",
         "glow-primary":
-          "0 10px 40px -10px hsl(var(--brand-from) / 0.55), 0 6px 20px -8px hsl(var(--brand-via) / 0.5)",
+          "0 10px 36px -12px hsl(var(--brand-from) / 0.35), 0 4px 16px -8px hsl(var(--brand-via) / 0.28)",
       },
       backgroundImage: {
         "brand-gradient":
           "linear-gradient(135deg, hsl(var(--brand-from)) 0%, hsl(var(--brand-via)) 50%, hsl(var(--brand-to)) 100%)",
         "brand-gradient-soft":
-          "linear-gradient(135deg, hsl(var(--brand-from) / 0.15) 0%, hsl(var(--brand-via) / 0.15) 50%, hsl(var(--brand-to) / 0.15) 100%)",
+          "linear-gradient(135deg, hsl(var(--brand-from) / 0.1) 0%, hsl(var(--brand-via) / 0.1) 50%, hsl(var(--brand-to) / 0.1) 100%)",
         "mesh-light":
-          "radial-gradient(at 12% 10%, hsl(245 90% 78% / 0.55) 0px, transparent 50%), radial-gradient(at 88% 20%, hsl(290 95% 80% / 0.5) 0px, transparent 50%), radial-gradient(at 50% 90%, hsl(200 95% 78% / 0.55) 0px, transparent 50%), radial-gradient(at 90% 95%, hsl(330 90% 82% / 0.45) 0px, transparent 50%), radial-gradient(at 5% 85%, hsl(160 80% 75% / 0.4) 0px, transparent 50%)",
+          "radial-gradient(at 14% 12%, hsl(40 24% 92% / 0.85) 0px, transparent 52%), radial-gradient(at 86% 18%, hsl(215 35% 92% / 0.45) 0px, transparent 50%), radial-gradient(at 48% 88%, hsl(205 30% 94% / 0.5) 0px, transparent 48%), radial-gradient(at 92% 92%, hsl(38 20% 93% / 0.4) 0px, transparent 45%)",
         "mesh-dark":
-          "radial-gradient(at 12% 10%, hsl(250 80% 30% / 0.65) 0px, transparent 50%), radial-gradient(at 85% 18%, hsl(285 70% 28% / 0.6) 0px, transparent 50%), radial-gradient(at 50% 90%, hsl(195 70% 22% / 0.7) 0px, transparent 50%), radial-gradient(at 90% 95%, hsl(320 70% 30% / 0.55) 0px, transparent 50%), radial-gradient(at 5% 85%, hsl(165 65% 20% / 0.5) 0px, transparent 50%)",
+          "radial-gradient(at 12% 10%, hsl(215 40% 18% / 0.55) 0px, transparent 50%), radial-gradient(at 85% 20%, hsl(222 35% 14% / 0.6) 0px, transparent 48%), radial-gradient(at 50% 90%, hsl(205 35% 16% / 0.5) 0px, transparent 52%), radial-gradient(at 8% 85%, hsl(40 15% 12% / 0.35) 0px, transparent 45%)",
         "grain":
           "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
       },

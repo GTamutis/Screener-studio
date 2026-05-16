@@ -140,7 +140,7 @@ export function InvitelySessionDetail({
     <div className="space-y-12">
       <div className="space-y-6">
         <Link
-          href="/project-management/invitely"
+          href="/invitely"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />

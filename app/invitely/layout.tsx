@@ -2,12 +2,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import { SectionShell } from "@/components/section-shell";
 import { formatUserDisplayName } from "@/lib/format-display-name";
 
-const NAV_ITEMS = [
-  { href: "/project-management", label: "Overview" },
-  { href: "/project-management/invitely", label: "Invitely" },
-] as const;
+const NAV_ITEMS = [{ href: "/invitely", label: "Sessions" }] as const;
 
-export default async function ProjectManagementLayout({
+export default async function InvitelyLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -17,9 +14,9 @@ export default async function ProjectManagementLayout({
 
   return (
     <SectionShell
-      brandLabel="Project management tools"
-      brandHref="/project-management"
-      sectionRootHref="/project-management"
+      brandLabel="Invitely"
+      brandHref="/invitely"
+      sectionRootHref="/invitely"
       navItems={NAV_ITEMS}
       displayName={displayName}
     >

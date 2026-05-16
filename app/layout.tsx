@@ -1,12 +1,26 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/ui/glass/theme-provider";
-import { MeshBackground } from "@/components/ui/glass/mesh-background";
+import { ConditionalMesh } from "@/components/layout/conditional-mesh";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -21,10 +35,11 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Workspace",
-    template: "%s · Workspace",
+    default: "DOS Workspace",
+    template: "%s · DOS Workspace",
   },
-  description: "Internal workspace for Screener Studio and other tools.",
+  description:
+    "One workspace for project setup, screener writing, quotas, invitations, and delivery.",
 };
 
 export default function RootLayout({
@@ -35,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} relative min-h-screen bg-background font-sans antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable} relative min-h-screen bg-background font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"
@@ -43,7 +58,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <MeshBackground />
+          <Suspense fallback={null}>
+            <ConditionalMesh />
+          </Suspense>
           <ClerkProvider>
             <TooltipProvider delayDuration={150}>
               <div className="relative flex min-h-screen flex-col">

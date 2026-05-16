@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRight, Sparkles } from "lucide-react";
+import { LayoutGrid, Sparkles } from "lucide-react";
 
 import { UserMenu } from "@/components/ui/glass/user-menu";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,7 @@ export function SectionShell({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/40 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <Link
@@ -55,10 +55,12 @@ export function SectionShell({
             </Link>
             <Link
               href="/workspace"
-              className="hidden items-center gap-1.5 rounded-full glass-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
+              title="Return to your workspace hub"
+              aria-label="Back to workspace — projects and tools"
+              className="hidden items-center gap-1.5 rounded-full glass-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-foreground/15 hover:text-foreground sm:inline-flex"
             >
-              <ArrowLeftRight className="h-3 w-3" />
-              Switch app
+              <LayoutGrid className="h-3.5 w-3.5 shrink-0 opacity-80" />
+              Workspace
             </Link>
             <nav className="flex flex-wrap items-center gap-1">
               {navItems.map(({ href, label }) => {
@@ -95,10 +97,12 @@ export function SectionShell({
           <div className="flex items-center gap-2">
             <Link
               href="/workspace"
-              className="inline-flex items-center gap-1.5 rounded-full glass-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:text-foreground sm:hidden"
+              title="Return to your workspace hub"
+              aria-label="Back to workspace — projects and tools"
+              className="inline-flex items-center gap-1.5 rounded-full glass-surface px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-foreground/15 hover:text-foreground sm:hidden"
             >
-              <ArrowLeftRight className="h-3 w-3" />
-              Switch
+              <LayoutGrid className="h-3.5 w-3.5 shrink-0 opacity-80" />
+              Workspace
             </Link>
             <UserMenu displayName={displayName} />
           </div>

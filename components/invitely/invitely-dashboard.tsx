@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
   Copy,
   Eye,
+  FolderKanban,
   Globe,
   Loader2,
   Mail,
@@ -21,6 +22,7 @@ import {
   deleteInviteSession,
 } from "@/app/actions/invitely";
 import type { InvitelySessionSummary } from "@/lib/invitely/types";
+import type { ProjectSummary } from "@/lib/projects/types";
 
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
@@ -101,9 +103,7 @@ function SessionCard({ session }: { session: InvitelySessionSummary }) {
           Copy link
         </Button>
         <Button asChild size="sm" variant="glass">
-          <Link
-            href={`/project-management/invitely/sessions/${session.id}`}
-          >
+          <Link href={`/invitely/sessions/${session.id}`}>
             <Eye className="h-3.5 w-3.5" />
             View
           </Link>
@@ -130,13 +130,32 @@ function SessionCard({ session }: { session: InvitelySessionSummary }) {
 export function InvitelyDashboard({
   initialSessions,
   setupError,
+  workspaceProjects,
 }: {
   initialSessions: InvitelySessionSummary[];
   setupError: string | null;
+  workspaceProjects: ProjectSummary[];
 }) {
   const router = useRouter();
   const [pendingCreate, startCreate] = useTransition();
   const sessions = initialSessions;
+
+  const [clientName, setClientName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [countriesRaw, setCountriesRaw] = useState("");
+  const [password, setPassword] = useState("");
+  const [selectedWorkspaceProjectId, setSelectedWorkspaceProjectId] =
+    useState("");
+
+  const sortedProjects = useMemo(
+    () =>
+      [...workspaceProjects].sort((a, b) =>
+        a.projectName.localeCompare(b.projectName, undefined, {
+          sensitivity: "base",
+        }),
+      ),
+    [workspaceProjects],
+  );
 
   const sorted = useMemo(
     () =>
@@ -147,13 +166,19 @@ export function InvitelyDashboard({
     [sessions],
   );
 
-  const handleCreate = (formData: FormData) => {
-    startCreate(async () => {
-      const clientName = String(formData.get("clientName") ?? "");
-      const projectName = String(formData.get("projectName") ?? "");
-      const countriesRaw = String(formData.get("countriesRaw") ?? "");
-      const password = String(formData.get("password") ?? "");
+  const applyWorkspaceProject = (projectId: string) => {
+    setSelectedWorkspaceProjectId(projectId);
+    if (!projectId) return;
+    const p = workspaceProjects.find((x) => x.id === projectId);
+    if (!p) return;
+    setClientName(p.clientName);
+    setProjectName(p.projectName);
+    setCountriesRaw(p.markets.join(", "));
+    toast.success("Form filled from workspace project.");
+  };
 
+  const handleCreate = () => {
+    startCreate(async () => {
       const res = await createInviteSession({
         clientName,
         projectName,
@@ -167,11 +192,12 @@ export function InvitelyDashboard({
       }
 
       toast.success("Session created — share the password with your client.");
+      setClientName("");
+      setProjectName("");
+      setCountriesRaw("");
+      setPassword("");
+      setSelectedWorkspaceProjectId("");
       router.refresh();
-      const form = document.getElementById(
-        "invitely-create-form",
-      ) as HTMLFormElement | null;
-      form?.reset();
     });
   };
 
@@ -179,7 +205,7 @@ export function InvitelyDashboard({
     return (
       <div className="space-y-10">
         <PageHeader
-          eyebrow="Project management · Invitely"
+          eyebrow="Invitely"
           title="Invitely"
           description="Password-protected attendee lists for multi-country studies."
         />
@@ -208,7 +234,7 @@ export function InvitelyDashboard({
   return (
     <div className="space-y-10">
       <PageHeader
-        eyebrow="Project management · Invitely"
+        eyebrow="Invitely"
         title="Invitely"
         description="Share password-protected attendee lists with clients. They edit; you export."
         actions={
@@ -219,7 +245,7 @@ export function InvitelyDashboard({
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-start">
-        <aside className="lg:sticky lg:top-24">
+        <aside className="space-y-6 lg:sticky lg:top-24">
           <GlassCard className="overflow-hidden p-0">
             <div className="relative border-b border-border/40 bg-brand-gradient-soft px-6 py-5">
               <div className="flex items-center gap-3">
@@ -241,7 +267,7 @@ export function InvitelyDashboard({
               className="space-y-4 p-6"
               onSubmit={(e) => {
                 e.preventDefault();
-                handleCreate(new FormData(e.currentTarget));
+                handleCreate();
               }}
             >
               <div className="space-y-1.5">
@@ -251,6 +277,8 @@ export function InvitelyDashboard({
                   id="clientName"
                   name="clientName"
                   placeholder="Acme Corp"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -260,6 +288,8 @@ export function InvitelyDashboard({
                   id="projectName"
                   name="projectName"
                   placeholder="EU diary study — Wave 2"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -269,6 +299,8 @@ export function InvitelyDashboard({
                   id="countriesRaw"
                   name="countriesRaw"
                   placeholder="UK, US, Germany, Japan"
+                  value={countriesRaw}
+                  onChange={(e) => setCountriesRaw(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -281,6 +313,8 @@ export function InvitelyDashboard({
                   minLength={6}
                   autoComplete="new-password"
                   placeholder="••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <p className="text-[11px] text-muted-foreground">
                   Share this with your client outside Invitely.
@@ -305,6 +339,64 @@ export function InvitelyDashboard({
                 )}
               </Button>
             </form>
+          </GlassCard>
+
+          <GlassCard className="overflow-hidden p-0">
+            <div className="relative border-b border-border/40 bg-brand-gradient-soft px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-glow-primary">
+                  <FolderKanban className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                    From workspace project
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Pull client, study name, and markets from Projects.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3 p-6">
+              {sortedProjects.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No workspace projects yet.{" "}
+                    <Link
+                      href="/projects"
+                      className="font-semibold text-primary underline-offset-4 hover:underline"
+                    >
+                      Create one under Projects
+                    </Link>{" "}
+                    to fill this form in one step.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="workspace-project-pick">Project</Label>
+                    <select
+                      id="workspace-project-pick"
+                      value={selectedWorkspaceProjectId}
+                      onChange={(e) => applyWorkspaceProject(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background/80 px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="">Choose a project…</option>
+                      {sortedProjects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.projectName} · {p.clientName} ({p.projectNumber})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Picking a project fills the New session fields above. Add a
+                    password, then create — session data stays in Invitely until
+                    you link rows to projects in the database.
+                  </p>
+                </>
+              )}
+            </div>
           </GlassCard>
         </aside>
 

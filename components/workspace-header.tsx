@@ -7,7 +7,7 @@ import { UserMenu } from "@/components/ui/glass/user-menu";
 
 export function WorkspaceHeader({ displayName }: { displayName: string }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border/40 bg-background/40 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/workspace"

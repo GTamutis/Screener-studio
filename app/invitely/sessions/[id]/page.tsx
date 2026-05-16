@@ -40,7 +40,7 @@ function ErrorShell({
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
       <Link
-        href="/project-management/invitely"
+        href="/invitely"
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80"
       >
         <ArrowLeft className="h-4 w-4" />

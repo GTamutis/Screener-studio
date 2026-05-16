@@ -189,7 +189,7 @@ export async function createInviteSession(input: {
 
   if (error) return { ok: false as const, error: error.message };
 
-  revalidatePath("/project-management/invitely");
+  revalidatePath("/invitely");
   return { ok: true as const, sessionId: data.id as string };
 }
 
@@ -236,8 +236,8 @@ export async function deleteInviteSession(sessionId: string) {
 
   if (error) return { ok: false as const, error: error.message };
 
-  revalidatePath("/project-management/invitely");
-  revalidatePath(`/project-management/invitely/sessions/${sessionId}`);
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${sessionId}`);
   return { ok: true as const };
 }
 
@@ -377,8 +377,8 @@ export async function clientAddAttendee(input: {
     selectedCountries: row.selectedCountries,
   });
 
-  revalidatePath("/project-management/invitely");
-  revalidatePath(`/project-management/invitely/sessions/${input.sessionId}`);
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${input.sessionId}`);
   return { ok: true as const, attendee: row };
 }
 
@@ -465,8 +465,8 @@ export async function clientUpdateAttendee(input: {
     selectedCountries: row.selectedCountries,
   });
 
-  revalidatePath("/project-management/invitely");
-  revalidatePath(`/project-management/invitely/sessions/${input.sessionId}`);
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${input.sessionId}`);
   return { ok: true as const, attendee: row };
 }
 
@@ -523,8 +523,8 @@ export async function clientDeleteAttendee(input: {
     selectedCountries: existing.selected_countries ?? [],
   });
 
-  revalidatePath("/project-management/invitely");
-  revalidatePath(`/project-management/invitely/sessions/${input.sessionId}`);
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${input.sessionId}`);
   return { ok: true as const };
 }
 
@@ -600,7 +600,7 @@ export async function clientBulkPasteAttendees(input: {
     });
   }
 
-  revalidatePath("/project-management/invitely");
-  revalidatePath(`/project-management/invitely/sessions/${input.sessionId}`);
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${input.sessionId}`);
   return { ok: true as const, attendees: insertedRows, addedCount: insertedRows.length };
 }
