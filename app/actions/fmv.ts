@@ -1,8 +1,9 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
+import { ownerClerkIdFilter } from "@/lib/auth/access";
+import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import type { FmvDatabaseStats, FmvEntry } from "@/lib/fmv/types";
 import { hourlyLocalToUsdGbpEur } from "@/lib/fmv/exchange-rates";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -77,17 +78,23 @@ function validateCurrency(code: string) {
 export async function listFmvEntries(): Promise<
   { entries: FmvEntry[]; stats: FmvDatabaseStats } | { error: string }
 > {
-  const { userId } = await auth();
-  if (!userId) return { error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { error: appUser.error };
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("fmv_entries")
     .select(
       "id, clerk_user_id, client_name, country, project_target, methodology, currency_code, hourly_rate_local, hourly_rate_usd, hourly_rate_gbp, hourly_rate_eur, fx_rate_date, created_at",
     )
-    .eq("clerk_user_id", userId)
     .order("created_at", { ascending: false });
+
+  const ownerFilter = ownerClerkIdFilter(appUser);
+  if (ownerFilter) {
+    query = query.eq("clerk_user_id", ownerFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) return { error: error.message };
 
@@ -104,8 +111,9 @@ export async function createFmvEntry(input: {
   hourlyRateLocal: number;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { ok: false, error: "Sign in required." };
+    const appUser = await getActiveAppUserForAction();
+    if ("error" in appUser) return { ok: false, error: appUser.error };
+    const userId = appUser.clerkUserId!;
 
     const clientName = normalizeWhitespace(input.clientName);
     const country = normalizeWhitespace(input.country);

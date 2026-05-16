@@ -1,8 +1,12 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
+import {
+  canAccessOwnedResource,
+  ownerClerkIdFilter,
+} from "@/lib/auth/access";
+import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import { isAllowedInvitelyMarket } from "@/lib/invitely/countries";
 import { normalizeWhitespace } from "@/lib/invitely/validation";
 import type { Project, ProjectSummary } from "@/lib/projects/types";
@@ -70,8 +74,9 @@ export async function createProject(input: {
   markets: string[];
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { ok: false, error: "Sign in required." };
+    const appUser = await getActiveAppUserForAction();
+    if ("error" in appUser) return { ok: false, error: appUser.error };
+    const userId = appUser.clerkUserId!;
 
     const clientName = normalizeWhitespace(input.clientName);
     const projectNumber = normalizeWhitespace(input.projectNumber);
@@ -121,25 +126,31 @@ export async function createProject(input: {
 export async function listProjects(): Promise<
   ProjectSummary[] | { error: string }
 > {
-  const { userId } = await auth();
-  if (!userId) return { error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { error: appUser.error };
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("projects")
     .select(
       "id, clerk_user_id, client_name, project_number, project_name, markets, created_at",
     )
-    .eq("clerk_user_id", userId)
     .order("created_at", { ascending: false });
+
+  const ownerFilter = ownerClerkIdFilter(appUser);
+  if (ownerFilter) {
+    query = query.eq("clerk_user_id", ownerFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) return { error: error.message };
   return (data ?? []).map((row) => mapSummary(row as DbProjectRow));
 }
 
 export async function getProject(id: string): Promise<Project> {
-  const { userId } = await auth();
-  if (!userId) throw new Error("Sign in required.");
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) throw new Error(appUser.error);
   assertUuid(id);
 
   const supabase = createAdminClient();
@@ -154,7 +165,9 @@ export async function getProject(id: string): Promise<Project> {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Project not found.");
   const row = data as DbProjectRow;
-  if (row.clerk_user_id !== userId) throw new Error("Project not found.");
+  if (!canAccessOwnedResource(appUser, row.clerk_user_id)) {
+    throw new Error("Project not found.");
+  }
 
   return mapProject(row);
 }
@@ -167,8 +180,8 @@ export async function updateProject(input: {
   markets: string[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { ok: false, error: "Sign in required." };
+    const appUser = await getActiveAppUserForAction();
+    if ("error" in appUser) return { ok: false, error: appUser.error };
     assertUuid(input.id);
 
     const clientName = normalizeWhitespace(input.clientName);
@@ -194,13 +207,20 @@ export async function updateProject(input: {
     const supabase = createAdminClient();
     const { data: existing, error: findError } = await supabase
       .from("projects")
-      .select("id")
+      .select("id, clerk_user_id")
       .eq("id", input.id)
-      .eq("clerk_user_id", userId)
       .maybeSingle();
 
     if (findError) return { ok: false, error: findError.message };
-    if (!existing) return { ok: false, error: "Project not found." };
+    if (
+      !existing ||
+      !canAccessOwnedResource(
+        appUser,
+        (existing as { clerk_user_id: string }).clerk_user_id,
+      )
+    ) {
+      return { ok: false, error: "Project not found." };
+    }
 
     const { error } = await supabase
       .from("projects")
@@ -210,8 +230,7 @@ export async function updateProject(input: {
         project_name: projectName,
         markets,
       })
-      .eq("id", input.id)
-      .eq("clerk_user_id", userId);
+      .eq("id", input.id);
 
     if (error) return { ok: false, error: error.message };
 
@@ -231,26 +250,29 @@ export async function updateProject(input: {
 export async function deleteProject(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { userId } = await auth();
-  if (!userId) return { ok: false, error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { ok: false, error: appUser.error };
   assertUuid(id);
 
   const supabase = createAdminClient();
   const { data: existing, error: findError } = await supabase
     .from("projects")
-    .select("id")
+    .select("id, clerk_user_id")
     .eq("id", id)
-    .eq("clerk_user_id", userId)
     .maybeSingle();
 
   if (findError) return { ok: false, error: findError.message };
-  if (!existing) return { ok: false, error: "Project not found." };
+  if (
+    !existing ||
+    !canAccessOwnedResource(
+      appUser,
+      (existing as { clerk_user_id: string }).clerk_user_id,
+    )
+  ) {
+    return { ok: false, error: "Project not found." };
+  }
 
-  const { error } = await supabase
-    .from("projects")
-    .delete()
-    .eq("id", id)
-    .eq("clerk_user_id", userId);
+  const { error } = await supabase.from("projects").delete().eq("id", id);
 
   if (error) return { ok: false, error: error.message };
 

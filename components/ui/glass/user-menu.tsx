@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Moon, Sun, User as UserIcon } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Moon, Sun, User as UserIcon, Users } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import * as React from "react";
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 function initialsOf(displayName: string): string {
   const parts = displayName
@@ -25,7 +27,17 @@ function initialsOf(displayName: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function UserMenu({ displayName }: { displayName: string }) {
+export function UserMenu({
+  displayName,
+  isAdmin = false,
+  pendingCount = 0,
+  minimal = false,
+}: {
+  displayName: string;
+  isAdmin?: boolean;
+  pendingCount?: number;
+  minimal?: boolean;
+}) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { signOut } = useClerk();
   const [mounted, setMounted] = React.useState(false);
@@ -40,7 +52,7 @@ export function UserMenu({ displayName }: { displayName: string }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="group flex items-center gap-2 rounded-full glass-surface py-1 pl-1 pr-3 transition hover:border-foreground/20 hover:shadow-glass-sm"
+          className="group relative flex items-center gap-2 rounded-full glass-surface py-1 pl-1 pr-3 transition hover:border-foreground/20 hover:shadow-glass-sm"
           aria-label="Account menu"
         >
           <Avatar className="h-7 w-7">
@@ -49,6 +61,14 @@ export function UserMenu({ displayName }: { displayName: string }) {
           <span className="hidden max-w-[140px] truncate text-sm font-medium text-foreground sm:inline">
             {displayName}
           </span>
+          {isAdmin && pendingCount > 0 ? (
+            <Badge
+              variant="destructive"
+              className="absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 text-[10px] leading-none"
+            >
+              {pendingCount > 9 ? "9+" : pendingCount}
+            </Badge>
+          ) : null}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
@@ -59,20 +79,40 @@ export function UserMenu({ displayName }: { displayName: string }) {
             <span className="truncate">{displayName}</span>
           </p>
         </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={(event) => {
-            event.preventDefault();
-            setTheme(isDark ? "light" : "dark");
-          }}
-        >
-          {mounted && isDark ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-          <span>{mounted && isDark ? "Light mode" : "Dark mode"}</span>
-        </DropdownMenuItem>
+        {!minimal && isAdmin ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/workspace/users" className="cursor-pointer">
+                <Users className="h-4 w-4" />
+                <span>Users</span>
+                {pendingCount > 0 ? (
+                  <Badge variant="secondary" className="ml-auto text-[10px]">
+                    {pendingCount} pending
+                  </Badge>
+                ) : null}
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
+        {!minimal ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                setTheme(isDark ? "light" : "dark");
+              }}
+            >
+              {mounted && isDark ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+              <span>{mounted && isDark ? "Light mode" : "Dark mode"}</span>
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:bg-destructive/10 focus:text-destructive"

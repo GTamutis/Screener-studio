@@ -1,18 +1,13 @@
 import Link from "next/link";
-import { currentUser } from "@clerk/nextjs/server";
 import { AlertTriangle } from "lucide-react";
 
 import { listFmvEntries } from "@/app/actions/fmv";
-import { WorkspaceHeader } from "@/components/workspace-header";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { Button } from "@/components/ui/button";
 import { FmvDatabaseTool } from "@/components/fmv/fmv-database-tool";
-import { formatUserDisplayName } from "@/lib/format-display-name";
 
 export default async function FairMarketValuesPage() {
-  const user = await currentUser();
-  const displayName = formatUserDisplayName(user);
 
   let result: Awaited<ReturnType<typeof listFmvEntries>>;
   try {
@@ -26,9 +21,7 @@ export default async function FairMarketValuesPage() {
   if ("error" in result) {
     const setupError = result.error;
     return (
-      <>
-        <WorkspaceHeader displayName={displayName} />
-        <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+      <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
           <div className="space-y-10">
             <PageHeader
               eyebrow="Workspace"
@@ -52,17 +45,13 @@ export default async function FairMarketValuesPage() {
               </div>
             </GlassCard>
           </div>
-        </main>
-      </>
+      </main>
     );
   }
 
   return (
-    <>
-      <WorkspaceHeader displayName={displayName} />
-      <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
-        <FmvDatabaseTool entries={result.entries} stats={result.stats} />
-      </main>
-    </>
+    <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+      <FmvDatabaseTool entries={result.entries} stats={result.stats} />
+    </main>
   );
 }

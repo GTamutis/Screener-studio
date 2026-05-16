@@ -8,7 +8,6 @@ import {
   Mail,
 } from "lucide-react";
 
-import { WorkspaceHeader } from "@/components/workspace-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { formatUserDisplayName } from "@/lib/format-display-name";
@@ -59,9 +58,7 @@ export default async function WorkspacePage() {
     user?.firstName?.trim() || displayName.split(" ")[0] || "friend";
 
   return (
-    <>
-      <WorkspaceHeader displayName={displayName} />
-      <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+    <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
         <section className="space-y-3 animate-fade-in-up">
           <Badge variant="gradient" className="rounded-full px-3 py-1">
             Workspace
@@ -186,7 +183,6 @@ export default async function WorkspacePage() {
             })}
           </ul>
         </section>
-      </main>
-    </>
+    </main>
   );
 }

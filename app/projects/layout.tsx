@@ -1,6 +1,5 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { SectionShell } from "@/components/section-shell";
-import { formatUserDisplayName } from "@/lib/format-display-name";
+import { getAuthenticatedShellProps } from "@/lib/auth/shell-props";
 
 const NAV_ITEMS = [{ href: "/projects", label: "All projects" }] as const;
 
@@ -9,8 +8,7 @@ export default async function ProjectsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
-  const displayName = formatUserDisplayName(user);
+  const shell = await getAuthenticatedShellProps();
 
   return (
     <SectionShell
@@ -18,7 +16,7 @@ export default async function ProjectsLayout({
       brandHref="/projects"
       sectionRootHref="/projects"
       navItems={NAV_ITEMS}
-      displayName={displayName}
+      {...shell}
     >
       {children}
     </SectionShell>

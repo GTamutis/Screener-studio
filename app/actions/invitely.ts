@@ -1,7 +1,11 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import {
+  canAccessOwnedResource,
+  ownerClerkIdFilter,
+} from "@/lib/auth/access";
+import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import { filterCountriesForSession, parseCountryList } from "@/lib/invitely/countries";
 import { hashSessionPassword, verifySessionPassword } from "@/lib/invitely/password";
 import type {
@@ -156,8 +160,9 @@ export async function createInviteSession(input: {
   countriesRaw: string;
   password: string;
 }) {
-  const { userId } = await auth();
-  if (!userId) return { ok: false as const, error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { ok: false as const, error: appUser.error };
+  const userId = appUser.clerkUserId!;
 
   const clientName = normalizeWhitespace(input.clientName);
   const projectName = normalizeWhitespace(input.projectName);
@@ -196,15 +201,21 @@ export async function createInviteSession(input: {
 export async function listInviteSessions(): Promise<
   InvitelySessionSummary[] | { error: string }
 > {
-  const { userId } = await auth();
-  if (!userId) return { error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { error: appUser.error };
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("invite_sessions")
     .select("id, client_name, project_name, countries, created_at")
-    .eq("clerk_user_id", userId)
     .order("created_at", { ascending: false });
+
+  const ownerFilter = ownerClerkIdFilter(appUser);
+  if (ownerFilter) {
+    query = query.eq("clerk_user_id", ownerFilter);
+  }
+
+  const { data, error } = await query;
 
   if (error) return { error: error.message };
   return (data ?? []).map((row) =>
@@ -213,26 +224,32 @@ export async function listInviteSessions(): Promise<
 }
 
 export async function deleteInviteSession(sessionId: string) {
-  const { userId } = await auth();
-  if (!userId) return { ok: false as const, error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { ok: false as const, error: appUser.error };
   assertUuid(sessionId);
 
   const supabase = createAdminClient();
   const { data: existing, error: findError } = await supabase
     .from("invite_sessions")
-    .select("id")
+    .select("id, clerk_user_id")
     .eq("id", sessionId)
-    .eq("clerk_user_id", userId)
     .maybeSingle();
 
   if (findError) return { ok: false as const, error: findError.message };
-  if (!existing) return { ok: false as const, error: "Session not found." };
+  if (
+    !existing ||
+    !canAccessOwnedResource(
+      appUser,
+      (existing as { clerk_user_id: string }).clerk_user_id,
+    )
+  ) {
+    return { ok: false as const, error: "Session not found." };
+  }
 
   const { error } = await supabase
     .from("invite_sessions")
     .delete()
-    .eq("id", sessionId)
-    .eq("clerk_user_id", userId);
+    .eq("id", sessionId);
 
   if (error) return { ok: false as const, error: error.message };
 
@@ -250,20 +267,27 @@ export type PmSessionDetail = {
 export async function getInviteSessionForPm(
   sessionId: string,
 ): Promise<PmSessionDetail | { error: string }> {
-  const { userId } = await auth();
-  if (!userId) return { error: "Sign in required." };
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { error: appUser.error };
   assertUuid(sessionId);
 
   const supabase = createAdminClient();
   const { data: sessionRow, error: sessionError } = await supabase
     .from("invite_sessions")
-    .select("id, client_name, project_name, countries, created_at")
+    .select("id, clerk_user_id, client_name, project_name, countries, created_at")
     .eq("id", sessionId)
-    .eq("clerk_user_id", userId)
     .maybeSingle();
 
   if (sessionError) return { error: sessionError.message };
-  if (!sessionRow) return { error: "Session not found." };
+  if (
+    !sessionRow ||
+    !canAccessOwnedResource(
+      appUser,
+      (sessionRow as DbSessionRow).clerk_user_id,
+    )
+  ) {
+    return { error: "Session not found." };
+  }
 
   const { data: attendeeRows, error: attendeeError } = await supabase
     .from("invite_attendees")

@@ -1,6 +1,5 @@
-import { currentUser } from "@clerk/nextjs/server";
 import { SectionShell } from "@/components/section-shell";
-import { formatUserDisplayName } from "@/lib/format-display-name";
+import { getAuthenticatedShellProps } from "@/lib/auth/shell-props";
 
 const NAV_ITEMS = [{ href: "/invitely", label: "Sessions" }] as const;
 
@@ -9,8 +8,7 @@ export default async function InvitelyLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
-  const displayName = formatUserDisplayName(user);
+  const shell = await getAuthenticatedShellProps();
 
   return (
     <SectionShell
@@ -18,7 +16,7 @@ export default async function InvitelyLayout({
       brandHref="/invitely"
       sectionRootHref="/invitely"
       navItems={NAV_ITEMS}
-      displayName={displayName}
+      {...shell}
     >
       {children}
     </SectionShell>
