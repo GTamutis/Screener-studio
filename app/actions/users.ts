@@ -111,7 +111,7 @@ export async function inviteAppUser(input: {
   const { data: existing } = await supabase
     .from("app_users")
     .select("id, status")
-    .ilike("email", email)
+    .eq("email", email)
     .maybeSingle();
 
   if (existing?.status === "disabled") {
