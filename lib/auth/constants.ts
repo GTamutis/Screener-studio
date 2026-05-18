@@ -1,12 +1,8 @@
-const DEFAULT_BOOTSTRAP_ADMIN_EMAILS = [
-  "g.tamutis@dayonestrategy.com",
-  "hello@gedas.info",
-] as const;
-
-/** First sign-in promotes to admin + active (break-glass bootstrap). */
+/** First sign-in promotes explicitly configured emails to admin + active. */
 export const BOOTSTRAP_ADMIN_EMAILS: readonly string[] =
-  process.env.BOOTSTRAP_ADMIN_EMAILS?.split(",").map((e) => e.trim()).filter(Boolean) ??
-  DEFAULT_BOOTSTRAP_ADMIN_EMAILS;
+  process.env.BOOTSTRAP_ADMIN_EMAILS?.split(",")
+    .map((e) => e.trim())
+    .filter(Boolean) ?? [];
 
 export type AppUserRole = "admin" | "member";
 export type AppUserStatus = "pending" | "active" | "disabled";
