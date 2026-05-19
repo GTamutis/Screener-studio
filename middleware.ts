@@ -4,6 +4,7 @@ import {
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+import { getMiddlewareAppAccess } from "@/lib/auth/middleware-access";
 import { readClerkAppMetadata } from "@/lib/auth/metadata";
 
 const isPublicRoute = createRouteMatcher([
@@ -22,7 +23,8 @@ export default clerkMiddleware(async (auth, request) => {
   if (isPublicRoute(request)) return;
 
   const { userId, sessionClaims } = await auth.protect();
-  const meta = readClerkAppMetadata(sessionClaims?.publicMetadata);
+  const sessionMeta = readClerkAppMetadata(sessionClaims?.publicMetadata);
+  const meta = await getMiddlewareAppAccess(userId, sessionMeta);
 
   if (!meta) {
     return;

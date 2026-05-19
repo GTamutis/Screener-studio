@@ -27,6 +27,18 @@ function mapRow(row: AppUserRow): AppUser {
   return mapAppUser(row);
 }
 
+async function syncLinkedAppUserAccess(
+  clerkUserId: string,
+  role: "admin" | "member",
+  displayName: string | null,
+): Promise<void> {
+  await syncClerkAppMetadata(clerkUserId, {
+    appStatus: "active",
+    appRole: role,
+  });
+  await syncLibraryProfileFromAppUser(clerkUserId, role, displayName);
+}
+
 export type AppUserListItem = AppUser & {
   hasSignedIn: boolean;
 };
@@ -137,7 +149,7 @@ export async function inviteAppUser(input: {
 
   const { data: existing } = await supabase
     .from("app_users")
-    .select("id, status")
+    .select("id, status, clerk_user_id, display_name")
     .ilike("email", email)
     .maybeSingle();
 
@@ -155,6 +167,16 @@ export async function inviteAppUser(input: {
       .eq("id", existing.id);
 
     if (reviveError) return { ok: false, error: reviveError.message };
+
+    if (existing.clerk_user_id) {
+      await syncLinkedAppUserAccess(
+        existing.clerk_user_id,
+        input.role,
+        existing.display_name,
+      );
+      revalidatePath("/workspace/users");
+      return { ok: true };
+    }
   } else if (!existing) {
     const { error: insertError } = await supabase.from("app_users").insert({
       email,
@@ -179,6 +201,16 @@ export async function inviteAppUser(input: {
       .eq("id", existing.id);
 
     if (promoteError) return { ok: false, error: promoteError.message };
+
+    if (existing.clerk_user_id) {
+      await syncLinkedAppUserAccess(
+        existing.clerk_user_id,
+        input.role,
+        existing.display_name,
+      );
+      revalidatePath("/workspace/users");
+      return { ok: true };
+    }
   } else {
     return { ok: false, error: "This email already has an active account." };
   }
