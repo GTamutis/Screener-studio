@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "user.deleted") {
     const clerkUserId = event.data.id;
+    if (!clerkUserId) return NextResponse.json({ ok: true });
     await deleteLibraryProfile(clerkUserId);
     await supabase.from("app_users").delete().eq("clerk_user_id", clerkUserId);
     return NextResponse.json({ ok: true });
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "user.created" || event.type === "user.updated") {
     const clerkUserId = event.data.id;
+    if (!clerkUserId) return NextResponse.json({ ok: true });
     const email =
       event.data.email_addresses?.find(
         (e) => e.id === event.data.primary_email_address_id,
