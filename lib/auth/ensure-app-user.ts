@@ -4,6 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 
 import { isBootstrapAdminEmail, normalizeEmail } from "@/lib/auth/constants";
 import { syncClerkAppMetadata } from "@/lib/auth/clerk-metadata";
+import { syncLibraryProfileFromAppUser } from "@/lib/auth/sync-library-profile";
 import { mapAppUser, type AppUser, type AppUserRow } from "@/lib/auth/types";
 import { formatUserDisplayName } from "@/lib/format-display-name";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,6 +37,11 @@ async function linkClerkToRow(
       appStatus: user.status,
       appRole: user.role,
     });
+    await syncLibraryProfileFromAppUser(
+      user.clerkUserId,
+      user.role,
+      user.displayName,
+    );
   }
   return user;
 }
@@ -76,6 +82,11 @@ export async function ensureAppUserForClerkId(
       appStatus: user.status,
       appRole: user.role,
     });
+    await syncLibraryProfileFromAppUser(
+      clerkUserId,
+      user.role,
+      user.displayName,
+    );
     return user;
   }
 
@@ -117,5 +128,10 @@ export async function ensureAppUserForClerkId(
     appStatus: user.status,
     appRole: user.role,
   });
+  await syncLibraryProfileFromAppUser(
+    clerkUserId,
+    user.role,
+    user.displayName,
+  );
   return user;
 }

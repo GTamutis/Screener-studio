@@ -7,6 +7,10 @@ import { normalizeEmail } from "@/lib/auth/constants";
 import { syncClerkAppMetadata } from "@/lib/auth/clerk-metadata";
 import { mapAppUser, type AppUser, type AppUserRow } from "@/lib/auth/types";
 import { getAdminAppUserForAction } from "@/lib/auth/get-app-user";
+import {
+  deleteLibraryProfile,
+  syncLibraryProfileFromAppUser,
+} from "@/lib/auth/sync-library-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,7 +64,7 @@ export async function approveAppUser(
 
   const { data: row, error: findError } = await supabase
     .from("app_users")
-    .select("id, clerk_user_id, role, status")
+    .select("id, clerk_user_id, role, status, display_name")
     .eq("id", userId)
     .maybeSingle();
 
@@ -87,10 +91,33 @@ export async function approveAppUser(
       appStatus: "active",
       appRole: row.role as "admin" | "member",
     });
+    await syncLibraryProfileFromAppUser(
+      row.clerk_user_id,
+      row.role as "admin" | "member",
+      row.display_name,
+    );
   }
 
   revalidatePath("/workspace/users");
   return { ok: true };
+}
+
+async function syncLibraryProfileForEmail(
+  supabase: ReturnType<typeof createAdminClient>,
+  email: string,
+): Promise<void> {
+  const { data } = await supabase
+    .from("app_users")
+    .select("clerk_user_id, role, display_name")
+    .ilike("email", normalizeEmail(email))
+    .maybeSingle();
+
+  if (!data?.clerk_user_id) return;
+  await syncLibraryProfileFromAppUser(
+    data.clerk_user_id,
+    data.role as "admin" | "member",
+    data.display_name,
+  );
 }
 
 export async function inviteAppUser(input: {
@@ -168,6 +195,8 @@ export async function inviteAppUser(input: {
     return { ok: false, error: message };
   }
 
+  await syncLibraryProfileForEmail(supabase, email);
+
   revalidatePath("/workspace/users");
   return { ok: true };
 }
@@ -192,6 +221,7 @@ export async function removeAppUser(
   }
 
   if (row.clerk_user_id) {
+    await deleteLibraryProfile(row.clerk_user_id);
     try {
       const client = await clerkClient();
       await client.users.deleteUser(row.clerk_user_id);

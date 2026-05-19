@@ -2,6 +2,10 @@ import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { normalizeEmail } from "@/lib/auth/constants";
+import {
+  deleteLibraryProfile,
+  syncLibraryProfileFromAppUser,
+} from "@/lib/auth/sync-library-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
@@ -16,6 +20,7 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "user.deleted") {
     const clerkUserId = event.data.id;
+    await deleteLibraryProfile(clerkUserId);
     await supabase.from("app_users").delete().eq("clerk_user_id", clerkUserId);
     return NextResponse.json({ ok: true });
   }
@@ -43,6 +48,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (byClerk) {
+      const { data: row } = await supabase
+        .from("app_users")
+        .select("role")
+        .eq("id", byClerk.id)
+        .maybeSingle();
+
       await supabase
         .from("app_users")
         .update({
@@ -51,6 +62,14 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", byClerk.id);
+
+      if (row?.role) {
+        await syncLibraryProfileFromAppUser(
+          clerkUserId,
+          row.role as "admin" | "member",
+          displayName,
+        );
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -69,6 +88,12 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", byEmail.id);
+
+      await syncLibraryProfileFromAppUser(
+        clerkUserId,
+        byEmail.role as "admin" | "member",
+        displayName,
+      );
       return NextResponse.json({ ok: true });
     }
   }
