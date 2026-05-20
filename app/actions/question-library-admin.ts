@@ -41,12 +41,27 @@ function revalidateAdminLibrary() {
 function normalizeAnswerOptions(
   type: AdminFormQuestionType,
   texts: string[],
+  existingOptions: QuestionAnswerOption[] = [],
 ): QuestionAnswerOption[] {
   if (!questionTypeShowsAnswerOptions(type)) return [];
+
+  const existingByText = new Map<string, boolean[]>();
+  for (const option of existingOptions) {
+    const key = option.text.trim();
+    const values = existingByText.get(key) ?? [];
+    values.push(Boolean(option.terminate));
+    existingByText.set(key, values);
+  }
+
   return texts
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((text) => ({ text, terminate: false }));
+    .map((text, index) => {
+      const matchingValues = existingByText.get(text);
+      const preservedTerminate =
+        matchingValues?.shift() ?? Boolean(existingOptions[index]?.terminate);
+      return { text, terminate: preservedTerminate };
+    });
 }
 
 function validateFormInput(
@@ -152,7 +167,7 @@ export async function updateLibraryQuestion(
 
   const { data: existing, error: findError } = await supabase
     .from("question_library")
-    .select("approved_at")
+    .select("approved_at, answer_options")
     .eq("id", id)
     .maybeSingle();
 
@@ -173,6 +188,9 @@ export async function updateLibraryQuestion(
       answer_options: normalizeAnswerOptions(
         input.questionType,
         input.answerOptionTexts,
+        Array.isArray(existing.answer_options)
+          ? (existing.answer_options as QuestionAnswerOption[])
+          : [],
       ),
       category: formCategoryToDb(input.category),
       sector: formSectorsToDb(input.sectors),
