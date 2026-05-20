@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DOS Workspace — Add Project</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { background: var(--surface); }
+.frame { width: 1440px; margin: 0 auto; }
+
+/* dimmed app behind */
+.behind {
+  position: relative;
+  height: 1024px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.behind::after {
+  content: ""; position: absolute; inset: 0;
+  background: rgba(20,28,46,0.42);
+  z-index: 1;
+}
+.behind-app {
+  display: grid; grid-template-columns: 56px 1fr;
+  height: 100%;
+}
+.bb-sb {
+  background: #fff; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; padding: 16px 0;
+  gap: 10px;
+}
+.bb-sb img { width: 24px; height: 24px; margin-bottom: 14px; }
+.bb-sb .it { width: 36px; height: 36px; border-radius: 6px; background: var(--surface); }
+.bb-main { padding: 24px 32px; }
+.bb-top {
+  height: 24px; width: 200px; background: var(--surface); border-radius: 4px; margin-bottom: 32px;
+}
+.bb-h { height: 36px; width: 340px; background: var(--surface); border-radius: 6px; margin-bottom: 24px; }
+.bb-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+.bb-card { height: 110px; background: #fff; border: 1px solid var(--border); border-radius: 16px; }
+.bb-table { background: #fff; border: 1px solid var(--border); border-radius: 16px; height: 520px; }
+
+/* modal overlay */
+.modal-wrap {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  padding-top: 24px;
+}
+
+.modal {
+  width: 720px;
+  background: #fff;
+  border-radius: var(--r-xl);
+  box-shadow: 0 32px 64px -16px rgba(20,28,46,0.32), 0 0 0 1px rgba(20,28,46,0.04);
+  display: flex; flex-direction: column;
+  max-height: 92%;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 28px 0;
+}
+.modal-header h2 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.modal-header h2 .sub { color: var(--text-3); font-weight: 400; margin-left: 6px; }
+.modal-close { color: var(--text-3); }
+
+.stepper {
+  display: flex; align-items: center;
+  padding: 20px 28px 24px;
+  gap: 12px;
+}
+.step {
+  display: flex; align-items: center; gap: 10px; flex: none;
+}
+.step .num {
+  width: 26px; height: 26px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  background: #fff; border: 1px solid var(--border);
+  color: var(--text-3);
+}
+.step .lbl { font-size: 13px; color: var(--text-3); font-weight: 500; }
+.step.done .num { background: var(--accent); color: #fff; border-color: var(--accent); }
+.step.done .lbl { color: var(--text); }
+.step.current .num { background: var(--accent); color: #fff; border-color: var(--accent); }
+.step.current .lbl { color: var(--text); }
+.step-bar { flex: 1; height: 1px; background: var(--border); }
+.step-bar.done { background: var(--accent); }
+
+.modal-body {
+  padding: 4px 28px 8px;
+  overflow: auto;
+  flex: 1;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+.form-grid .full { grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; }
+.field .opt { color: var(--text-3); font-weight: 400; margin-left: 4px; font-size: 12px; }
+
+.select {
+  height: 40px; width: 100%; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+  color: var(--text); font-size: 14px;
+}
+.select.placeholder { color: var(--text-3); }
+.select .chev { color: var(--text-3); }
+
+.tag-input {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px 8px; min-height: 40px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+}
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: var(--accent);
+  padding: 4px 8px; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+}
+.tag .x { width: 12px; height: 12px; color: var(--accent); opacity: 0.6; cursor: pointer; }
+.tag-input input {
+  border: 0; outline: 0; flex: 1; min-width: 100px; background: transparent;
+  font-size: 13px; padding: 4px;
+}
+.tag-input input::placeholder { color: var(--text-3); }
+
+.date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.date-input {
+  height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+  display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 14px;
+}
+.date-input .ic { color: var(--text-3); }
+.date-input.empty { color: var(--text-3); }
+
+.divider { border: 0; border-top: 1px solid var(--border); margin: 20px 0; }
+
+.tags-section h4 { font-size: 13px; font-weight: 500; margin: 0 0 10px; }
+.tags-section .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills .pill {
+  background: var(--surface); color: var(--text-2); border: 1px solid var(--border); height: 26px;
+  font-weight: 500;
+}
+.pills .add {
+  height: 26px; padding: 0 10px; display: inline-flex; align-items: center; gap: 4px;
+  border: 1px dashed var(--border-strong); border-radius: var(--r-sm); color: var(--text-2); font-size: 12px;
+  background: #fff; cursor: pointer;
+}
+
+.modal-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
+.modal-footer .ghost { color: var(--text-2); font-size: 14px; background: transparent; border: 0; }
+.modal-footer .ghost:hover { color: var(--text); }
+.modal-footer .actions { display: flex; gap: 10px; }
+
+/* step 2 + 3 lower comparison strip */
+.compare {
+  padding: 64px 80px 80px;
+  background: var(--surface);
+}
+.compare-title {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.compare-title h2 { margin: 8px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.compare-title .desc { color: var(--text-2); font-size: 14px; max-width: 380px; }
+.compare-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  align-items: start;
+}
+.compare-grid .modal {
+  width: 100%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(20,28,46,0.18);
+}
+
+/* step 2 specifics */
+.member-row {
+  display: grid; grid-template-columns: 1fr 140px 32px; gap: 12px; align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.member-row:last-child { border-bottom: 0; }
+.mb-user { display: flex; align-items: center; gap: 10px; }
+.mb-user .n { font-size: 13px; font-weight: 500; }
+.mb-user .e { font-size: 12px; color: var(--text-3); }
+.role-select {
+  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px;
+  display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text);
+}
+.toggle {
+  width: 36px; height: 20px; border-radius: 999px; background: var(--border-strong); position: relative; cursor: pointer; flex: none;
+}
+.toggle::after {
+  content: ""; position: absolute; left: 2px; top: 2px;
+  width: 16px; height: 16px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  transition: left 120ms ease;
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 18px; }
+.option-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.option-row:last-child { border-bottom: 0; }
+.option-row .text .t { font-size: 13px; font-weight: 500; }
+.option-row .text .d { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+/* step 3 tool grid */
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tool-card {
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 14px; display: flex; gap: 12px;
+  position: relative;
+  background: #fff;
+}
+.tool-card.selected { border-color: var(--accent); background: var(--accent-soft); }
+.tool-card.disabled { background: var(--surface); opacity: 0.7; }
+.tool-card .ic {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  background: #fff; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); flex: none;
+}
+.tool-card.disabled .ic { color: var(--text-3); }
+.tool-card .text { flex: 1; padding-right: 40px; }
+.tool-card .text .t { font-size: 13px; font-weight: 600; }
+.tool-card .text .d { font-size: 12px; color: var(--text-2); margin-top: 2px; line-height: 1.4; }
+.tool-card .toggle { position: absolute; top: 14px; right: 14px; }
+.tool-card .coming {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); font-weight: 500;
+}
+
+.summary-note {
+  margin-top: 18px;
+  background: var(--accent-soft); border: 1px solid #DDE5EE;
+  border-radius: var(--r-md); padding: 12px 14px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.summary-note .ic { color: var(--accent); flex: none; }
+.summary-note .txt { font-size: 12px; color: var(--text-2); line-height: 1.55; }
+.summary-note b { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <section class="behind" data-screen-label="Add Project — In context">
+    <div class="behind-app">
+      <div class="bb-sb">
+        <img src="../assets/dos-mark.png" alt="">
+        <div class="it"></div><div class="it"></div><div class="it"></div><div class="it"></div><div class="it"></div>
+      </div>
+      <div class="bb-main">
+        <div class="bb-top"></div>
+        <div class="bb-h"></div>
+        <div class="bb-row">
+          <div class="bb-card"></div><div class="bb-card"></div><div class="bb-card"></div><div class="bb-card"></div>
+        </div>
+        <div class="bb-table"></div>
+      </div>
+    </div>
+
+    <div class="modal-wrap">
+      <div class="modal" role="dialog" aria-label="Create new project">
+        <header class="modal-header">
+          <h2>Create new project<span class="sub">— Step 1 of 3</span></h2>
+          <button class="icon-btn modal-close"><span data-icon="x"></span></button>
+        </header>
+
+        <div class="stepper">
+          <div class="step current"><span class="num">1</span><span class="lbl">Project details</span></div>
+          <div class="step-bar"></div>
+          <div class="step"><span class="num">2</span><span class="lbl">Team &amp; access</span></div>
+          <div class="step-bar"></div>
+          <div class="step"><span class="num">3</span><span class="lbl">Tools</span></div>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field full">
+              <label class="field-label">Project name</label>
+              <input class="input" placeholder="e.g. Q3 Brand Tracker — EMEA">
+            </div>
+            <div class="field">
+              <label class="field-label">Client name</label>
+              <input class="input" value="TechCorp">
+            </div>
+            <div class="field">
+              <label class="field-label">Project type</label>
+              <div class="select"><span>Quantitative</span><span class="chev" data-icon="chevron-down"></span></div>
+            </div>
+            <div class="field full">
+              <label class="field-label">Country / market</label>
+              <div class="tag-input">
+                <span class="tag">United Kingdom <span class="x" data-icon="x"></span></span>
+                <span class="tag">Germany <span class="x" data-icon="x"></span></span>
+                <span class="tag">France <span class="x" data-icon="x"></span></span>
+                <input placeholder="Add markets…">
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Sample size (target)</label>
+              <input class="input" value="1,000" type="text">
+            </div>
+            <div class="field">
+              <label class="field-label">Internal reference ID <span class="opt">optional</span></label>
+              <input class="input" placeholder="PRJ-2026-0041">
+            </div>
+            <div class="field full">
+              <label class="field-label">Field window</label>
+              <div class="date-row">
+                <div class="date-input"><span class="ic" data-icon="calendar"></span>18 May 2026</div>
+                <div class="date-input empty"><span class="ic" data-icon="calendar"></span>End date</div>
+              </div>
+            </div>
+            <div class="field full">
+              <label class="field-label">Project description</label>
+              <textarea class="input" placeholder="Brief description for your team…"></textarea>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="tags-section">
+            <h4>Project tags</h4>
+            <div class="pills">
+              <span class="pill">Automotive</span>
+              <span class="pill">Segmentation</span>
+              <span class="pill">EMEA</span>
+              <button class="add"><span data-icon="plus"></span> Add tag</button>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button class="ghost">Cancel</button>
+          <div class="actions">
+            <button class="btn btn-ghost">Save as draft</button>
+            <button class="btn btn-primary">Next: Team &amp; access <span data-icon="arrow-right"></span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <section class="compare" data-screen-label="Add Project — Steps 2 & 3">
+    <div class="compare-title">
+      <div>
+        <span class="label-eyebrow">Wizard states</span>
+        <h2>Steps 2 and 3 — Team &amp; access · Tools</h2>
+      </div>
+      <p class="desc">Both follow the same modal scaffold. The footer's primary CTA changes per step.</p>
+    </div>
+    <div class="compare-grid">
+
+      <!-- STEP 2 -->
+      <div class="modal">
+        <header class="modal-header">
+          <h2>Create new project<span class="sub">— Step 2 of 3</span></h2>
+          <button class="icon-btn modal-close"><span data-icon="x"></span></button>
+        </header>
+        <div class="stepper">
+          <div class="step done"><span class="num"><span data-icon="check"></span></span><span class="lbl">Project details</span></div>
+          <div class="step-bar done"></div>
+          <div class="step current"><span class="num">2</span><span class="lbl">Team &amp; access</span></div>
+          <div class="step-bar"></div>
+          <div class="step"><span class="num">3</span><span class="lbl">Tools</span></div>
+        </div>
+        <div class="modal-body">
+          <div class="field" style="margin-bottom:16px;">
+            <label class="field-label">Invite team members</label>
+            <div class="tag-input">
+              <span class="tag">s.klein@dos.com <span class="x" data-icon="x"></span></span>
+              <span class="tag">m.lee@dos.com <span class="x" data-icon="x"></span></span>
+              <input placeholder="Add by email…">
+            </div>
+            <span class="field-help">Comma- or enter-separated. They'll receive an invite email.</span>
+          </div>
+
+          <div style="margin-top:8px;">
+            <h4 style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-3);margin:0 0 4px;font-weight:500;">Roles</h4>
+            <div class="member-row">
+              <div class="mb-user"><div class="avatar">GT</div><div><div class="n">Gedas Tamutis (you)</div><div class="e">gedas@dos.com</div></div></div>
+              <div class="role-select"><span>Owner</span><span data-icon="chevron-down"></span></div>
+              <button class="icon-btn"><span data-icon="more-vertical"></span></button>
+            </div>
+            <div class="member-row">
+              <div class="mb-user"><div class="avatar" style="background:#E6F1EC;color:var(--status-success);">SK</div><div><div class="n">Sarah Klein</div><div class="e">s.klein@dos.com</div></div></div>
+              <div class="role-select"><span>Editor</span><span data-icon="chevron-down"></span></div>
+              <button class="icon-btn"><span data-icon="more-vertical"></span></button>
+            </div>
+            <div class="member-row">
+              <div class="mb-user"><div class="avatar" style="background:#F0EAE0;color:var(--status-warning);">ML</div><div><div class="n">Marcus Lee</div><div class="e">m.lee@dos.com</div></div></div>
+              <div class="role-select"><span>Editor</span><span data-icon="chevron-down"></span></div>
+              <button class="icon-btn"><span data-icon="more-vertical"></span></button>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="option-row">
+            <div class="text">
+              <div class="t">Allow client portal access</div>
+              <div class="d">Clients see a read-only project summary and field progress.</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="option-row">
+            <div class="text">
+              <div class="t">Require 2FA for vendors</div>
+              <div class="d">Enforced when accessing screeners and respondent links.</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="option-row">
+            <div class="text">
+              <div class="t">Auto-archive after field close</div>
+              <div class="d">Move to archive 30 days after the field end date.</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button class="ghost"><span data-icon="arrow-left"></span> Back</button>
+          <div class="actions">
+            <button class="btn btn-ghost">Save as draft</button>
+            <button class="btn btn-primary">Next: Tools <span data-icon="arrow-right"></span></button>
+          </div>
+        </footer>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="modal">
+        <header class="modal-header">
+          <h2>Create new project<span class="sub">— Step 3 of 3</span></h2>
+          <button class="icon-btn modal-close"><span data-icon="x"></span></button>
+        </header>
+        <div class="stepper">
+          <div class="step done"><span class="num"><span data-icon="check"></span></span><span class="lbl">Project details</span></div>
+          <div class="step-bar done"></div>
+          <div class="step done"><span class="num"><span data-icon="check"></span></span><span class="lbl">Team &amp; access</span></div>
+          <div class="step-bar done"></div>
+          <div class="step current"><span class="num">3</span><span class="lbl">Tools</span></div>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:var(--text-2);margin:0 0 14px;line-height:1.55;">Activate the tools you need for this project. You can change this any time from the project's settings.</p>
+          <div class="tool-grid">
+            <div class="tool-card selected">
+              <div class="ic"><span data-icon="layout"></span></div>
+              <div class="text"><div class="t">Project Summary</div><div class="d">Auto-generated client briefing.</div></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="tool-card selected">
+              <div class="ic"><span data-icon="file-text"></span></div>
+              <div class="text"><div class="t">Screener Studio</div><div class="d">Write, test, publish.</div></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="tool-card selected">
+              <div class="ic"><span data-icon="bar-chart"></span></div>
+              <div class="text"><div class="t">Quota Tracker</div><div class="d">Live field progress by segment.</div></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="tool-card selected">
+              <div class="ic"><span data-icon="send"></span></div>
+              <div class="text"><div class="t">Invitely</div><div class="d">Invites, reminders, links.</div></div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="tool-card disabled">
+              <div class="ic"><span data-icon="activity"></span></div>
+              <div class="text"><div class="t">Data Dashboard</div><div class="d">Live cross-tabs &amp; charts.</div></div>
+              <div class="coming">Coming soon</div>
+            </div>
+            <div class="tool-card disabled">
+              <div class="ic"><span data-icon="sparkle"></span></div>
+              <div class="text"><div class="t">Analysis Suite</div><div class="d">Stats &amp; segmentation.</div></div>
+              <div class="coming">Coming soon</div>
+            </div>
+          </div>
+
+          <div class="summary-note">
+            <span class="ic" data-icon="check-circle"></span>
+            <div class="txt"><b>4 tools selected.</b> Your project, screener and quota structures will be created and linked automatically.</div>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button class="ghost"><span data-icon="arrow-left"></span> Back</button>
+          <div class="actions">
+            <button class="btn btn-ghost">Save as draft</button>
+            <button class="btn btn-primary">Create project <span data-icon="check"></span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

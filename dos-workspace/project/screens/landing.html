@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DOS Workspace — Landing</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { background: var(--surface); }
+.page { width: 1440px; margin: 0 auto; }
+
+/* nav */
+.nav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+  padding: 0 80px;
+  background: rgba(247,247,245,0.86);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid transparent;
+}
+.nav.scrolled { border-bottom-color: var(--border); }
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+  font-size: 14px; color: var(--text-2); text-decoration: none;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+
+/* hero */
+.hero { padding: 88px 80px 64px; }
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent-tint); color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.hero-eyebrow::before {
+  content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--accent);
+}
+.hero h1 {
+  font-size: 56px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  max-width: 640px;
+  margin: 20px 0 18px;
+  color: var(--text);
+  text-wrap: pretty;
+}
+.hero h1 .accent { color: var(--accent); }
+.hero .sub {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text-2);
+  max-width: 540px;
+  margin: 0 0 28px;
+}
+.hero-cta { display: flex; align-items: center; gap: 16px; }
+.hero-cta .link {
+  color: var(--text); font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none;
+}
+.hero-cta .link:hover { color: var(--accent); }
+
+/* hero visual */
+.hero-visual {
+  margin: 56px 0 0;
+  position: relative;
+}
+.hero-screenshot {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 24px 48px -24px rgba(30,58,95,0.18);
+  overflow: hidden;
+  height: 540px;
+  display: grid;
+  grid-template-columns: 56px 1fr 280px;
+}
+.hs-side {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0;
+  gap: 8px;
+}
+.hs-side .mark { width: 22px; height: 22px; }
+.hs-side .icon-cell {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+}
+.hs-side .icon-cell.active { color: var(--accent); background: var(--surface); }
+.hs-main { padding: 24px 28px; overflow: hidden; }
+.hs-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.hs-bread { font-size: 13px; color: var(--text-2); }
+.hs-search {
+  width: 260px; height: 32px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--text-3); font-size: 12px;
+}
+.hs-h2 { font-size: 20px; font-weight: 600; margin: 20px 0 4px; letter-spacing: -0.01em; }
+.hs-date { font-size: 12px; color: var(--text-3); }
+.hs-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+.hs-stat {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-md); padding: 14px;
+}
+.hs-stat .lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.hs-stat .val { font-size: 22px; font-weight: 600; margin-top: 6px; letter-spacing: -0.01em; }
+.hs-table {
+  border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; background: #fff;
+}
+.hs-thead {
+  display: grid; grid-template-columns: 2.5fr 1fr 1fr 1fr;
+  font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
+.hs-row {
+  display: grid; grid-template-columns: 2.5fr 1fr 1fr 1fr;
+  align-items: center;
+  padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.hs-row:last-child { border-bottom: 0; }
+.hs-row .nm { font-weight: 500; }
+.hs-row .cl { color: var(--text-2); }
+.hs-right {
+  background: var(--surface); border-left: 1px solid var(--border);
+  padding: 24px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.hs-right h4 { margin: 0; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.hs-qa {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 12px; display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.hs-qa.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hs-qa.primary .i { stroke: #fff; }
+.hs-mini-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 14px;
+}
+.hs-mini-card .lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.hs-progress { height: 6px; border-radius: 3px; background: var(--surface); margin: 10px 0 6px; overflow: hidden; }
+.hs-progress > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+/* logos strip */
+.logos {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 48px 80px 32px;
+  color: var(--text-3);
+}
+.logos .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; color: var(--text-3); flex: none; margin-right: 40px; }
+.logos .row { display: flex; gap: 56px; align-items: center; flex: 1; justify-content: flex-end; }
+.logos .mark {
+  font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: #BEBEBE;
+  font-family: var(--font);
+}
+.logos .mark.italic { font-style: italic; }
+.logos .mark.mono { font-family: var(--mono); font-weight: 500; letter-spacing: 0; }
+.logos .mark.tight { letter-spacing: -0.05em; font-weight: 700; }
+
+/* features */
+.features { padding: 64px 80px 32px; }
+.section-lead {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 32px;
+}
+.section-lead .ttl {
+  font-size: 32px; font-weight: 600; letter-spacing: -0.02em; max-width: 600px; text-wrap: pretty;
+  margin: 8px 0 0;
+}
+.section-lead .label-eyebrow { display: block; margin-bottom: 6px; }
+.section-lead .desc { font-size: 15px; color: var(--text-2); max-width: 360px; line-height: 1.55; }
+.feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.feat {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  display: flex; flex-direction: column;
+  min-height: 180px;
+}
+.feat-ic {
+  width: 36px; height: 36px; border-radius: var(--r-sm);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+.feat h3 {
+  font-size: 16px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em;
+}
+.feat p {
+  font-size: 14px; color: var(--text-2); margin: 0; line-height: 1.55;
+}
+.feat .ref {
+  margin-top: auto; padding-top: 20px;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); font-weight: 500;
+}
+
+/* sub-band: workflow */
+.band {
+  margin: 64px 80px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--r-xl);
+  padding: 56px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 56px;
+  align-items: center;
+}
+.band h2 { font-size: 36px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; margin: 12px 0 16px; max-width: 460px; }
+.band p { color: rgba(255,255,255,0.72); font-size: 15px; line-height: 1.6; max-width: 420px; margin: 0 0 24px; }
+.band .label-eyebrow { color: rgba(255,255,255,0.6); }
+.band .btn-ghost { background: transparent; border-color: rgba(255,255,255,0.25); color: #fff; }
+.band .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+.band .btn-primary { background: #fff; color: var(--accent); }
+.band .btn-primary:hover { background: #f5f3f0; }
+.flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: rgba(255,255,255,0.04);
+}
+.flow-step {
+  padding: 18px 16px;
+  border-right: 1px solid rgba(255,255,255,0.14);
+  position: relative;
+}
+.flow-step:last-child { border-right: 0; }
+.flow-step .num {
+  font-family: var(--mono);
+  font-size: 11px; color: rgba(255,255,255,0.55); display: block; margin-bottom: 18px;
+}
+.flow-step .nm { font-size: 13px; font-weight: 500; }
+.flow-step .ds { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+/* footer */
+.footer {
+  padding: 64px 80px 36px;
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 56px;
+}
+.footer .brand { color: var(--text); }
+.footer .tag { color: var(--text-2); font-size: 14px; margin-top: 14px; max-width: 280px; line-height: 1.55; }
+.footer h5 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); font-weight: 500; margin: 0 0 16px; }
+.footer ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.footer ul a { color: var(--text); text-decoration: none; font-size: 14px; }
+.footer ul a:hover { color: var(--accent); }
+.footer-bottom {
+  grid-column: 1/-1;
+  border-top: 1px solid var(--border);
+  margin-top: 40px; padding-top: 20px;
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-3);
+}
+.footer-bottom .links { display: flex; gap: 20px; }
+.footer-bottom a { color: var(--text-3); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="nav scrolled" data-screen-label="Landing — Nav">
+    <a class="brand" href="#">
+      <img class="brand-mark" src="../assets/dos-mark.png" alt="">
+      <span class="brand-word">DOS</span><span class="brand-sub">Workspace</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#">Features</a>
+      <a href="#">Solutions</a>
+      <a href="#">Pricing</a>
+      <a href="#">Docs</a>
+      <a href="#">Changelog</a>
+    </nav>
+    <div class="nav-right">
+      <button class="btn btn-text" style="height:36px;padding:0 8px;color:var(--text-2);">Sign in</button>
+      <button class="btn btn-primary">Get started</button>
+    </div>
+  </header>
+
+  <section class="hero" data-screen-label="Landing — Hero">
+    <span class="hero-eyebrow">Built for research teams</span>
+    <h1>Your entire research workflow, <span class="accent">in one place.</span></h1>
+    <p class="sub">DOS Workspace connects project setup, screener writing, quota management and field operations into a single intelligent workspace.</p>
+    <div class="hero-cta">
+      <button class="btn btn-primary btn-lg">Start free trial</button>
+      <a class="link" href="#">See a demo <span data-icon="arrow-right"></span></a>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-screenshot">
+        <aside class="hs-side">
+          <img class="mark" src="../assets/dos-mark.png" alt="">
+          <div style="height:8px;"></div>
+          <div class="icon-cell active"><span data-icon="home"></span></div>
+          <div class="icon-cell"><span data-icon="folder"></span></div>
+          <div class="icon-cell"><span data-icon="file-text"></span></div>
+          <div class="icon-cell"><span data-icon="bar-chart"></span></div>
+          <div class="icon-cell"><span data-icon="send"></span></div>
+          <div class="icon-cell"><span data-icon="layout"></span></div>
+        </aside>
+        <main class="hs-main">
+          <div class="hs-topbar">
+            <div class="hs-bread">Dashboard</div>
+            <div class="hs-search"><span data-icon="search"></span> Search projects…</div>
+          </div>
+          <h2 class="hs-h2">Good morning, Gedas.</h2>
+          <div class="hs-date">Thursday, 14 May 2026</div>
+          <div class="hs-stats">
+            <div class="hs-stat"><div class="lbl">Active</div><div class="val">12</div></div>
+            <div class="hs-stat"><div class="lbl">In field</div><div class="val">4</div></div>
+            <div class="hs-stat"><div class="lbl">Setup</div><div class="val">3</div></div>
+            <div class="hs-stat"><div class="lbl">Done 30d</div><div class="val">27</div></div>
+          </div>
+          <div class="hs-table">
+            <div class="hs-thead"><div>Project</div><div>Client</div><div>Status</div><div>Updated</div></div>
+            <div class="hs-row"><div class="nm">Automotive Segmentation Study</div><div class="cl">TechCorp</div><div><span class="status status-infield">In field</span></div><div class="cl">2h ago</div></div>
+            <div class="hs-row"><div class="nm">Financial Services Usage</div><div class="cl">FinGroup</div><div><span class="status status-setup">Setup</span></div><div class="cl">1d ago</div></div>
+            <div class="hs-row"><div class="nm">Healthcare Brand Tracker W24</div><div class="cl">MedInsights</div><div><span class="status status-completed">Done</span></div><div class="cl">3d ago</div></div>
+            <div class="hs-row"><div class="nm">Retail CX Pulse — Q2</div><div class="cl">RetailCo</div><div><span class="status status-draft">Draft</span></div><div class="cl">5d ago</div></div>
+          </div>
+        </main>
+        <aside class="hs-right">
+          <h4>Quick actions</h4>
+          <div class="hs-qa primary"><span data-icon="plus"></span> New project</div>
+          <div class="hs-qa"><span data-icon="copy"></span> Import from template</div>
+          <div class="hs-qa"><span data-icon="users"></span> Invite a team member</div>
+          <div style="height:4px;"></div>
+          <h4>Field health</h4>
+          <div class="hs-mini-card">
+            <div class="lbl">Quota — Auto Study</div>
+            <div class="hs-progress"><span style="width:64%"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);">
+              <span>640 / 1,000</span><span style="color:var(--status-success);">On pace</span>
+            </div>
+          </div>
+          <div class="hs-mini-card">
+            <div class="lbl">Quota — FinGroup</div>
+            <div class="hs-progress"><span style="width:22%;background:var(--status-warning);"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);">
+              <span>220 / 1,000</span><span style="color:var(--status-warning);">Behind</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="logos">
+    <div class="label">Trusted by research teams at</div>
+    <div class="row">
+      <span class="mark tight">NORTHWIND</span>
+      <span class="mark">Briar &amp; Bell</span>
+      <span class="mark italic">Halcyon</span>
+      <span class="mark mono">field/works</span>
+      <span class="mark">Meridian Co.</span>
+      <span class="mark tight">PARLIAMENT</span>
+    </div>
+  </section>
+
+  <section class="features" data-screen-label="Landing — Features">
+    <div class="section-lead">
+      <div>
+        <span class="label-eyebrow">What's inside</span>
+        <h2 class="ttl">Six tools that finally know about each other.</h2>
+      </div>
+      <p class="desc">Every tool reads from the same project record — set the brief once and screener, quotas and field operations pick it up automatically.</p>
+    </div>
+    <div class="feat-grid">
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="folder-open"></span></div>
+        <h3>Project Hub</h3>
+        <p>Create a project once. Every tool picks it up automatically — brief, markets, quotas, sample.</p>
+        <div class="ref">Tool 01 · Core</div>
+      </article>
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="file-text"></span></div>
+        <h3>Screener Studio</h3>
+        <p>Write, test and publish screeners without leaving the workspace. Branching, soft-quotas, multi-market.</p>
+        <div class="ref">Tool 02 · Fieldwork</div>
+      </article>
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="bar-chart"></span></div>
+        <h3>Quota Tracker</h3>
+        <p>Monitor field progress across segments in real time. Re-balance from the same screen.</p>
+        <div class="ref">Tool 03 · Fieldwork</div>
+      </article>
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="send"></span></div>
+        <h3>Invitely</h3>
+        <p>Manage respondent invitations, reminders and one-time links. Vendor-agnostic.</p>
+        <div class="ref">Tool 04 · Fieldwork</div>
+      </article>
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="layout"></span></div>
+        <h3>Project Summary</h3>
+        <p>Auto-generated briefings your clients actually want to read — pulled from the project record.</p>
+        <div class="ref">Tool 05 · Delivery</div>
+      </article>
+      <article class="feat">
+        <div class="feat-ic"><span data-icon="users"></span></div>
+        <h3>Team Access</h3>
+        <p>Role-based permissions for clients, vendors and internal staff. Project-scoped or workspace-wide.</p>
+        <div class="ref">Tool 06 · Admin</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="band" data-screen-label="Landing — Workflow band">
+    <div>
+      <span class="label-eyebrow">A single record</span>
+      <h2>One brief, end to end. No re-keying. No drift.</h2>
+      <p>Every tool reads from the same project record. Update the field dates in Project Hub and the screener, the invites and the quota tracker move with it.</p>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-primary btn-lg">Start free trial</button>
+        <button class="btn btn-ghost btn-lg">Read the docs</button>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-step"><span class="num">01</span><div class="nm">Brief</div><div class="ds">Set markets, sample, dates.</div></div>
+      <div class="flow-step"><span class="num">02</span><div class="nm">Screener</div><div class="ds">Branching + soft quotas.</div></div>
+      <div class="flow-step"><span class="num">03</span><div class="nm">Invite</div><div class="ds">Vendors &amp; panels.</div></div>
+      <div class="flow-step"><span class="num">04</span><div class="nm">Deliver</div><div class="ds">Summary &amp; share.</div></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>
+      <a class="brand" href="#">
+        <img class="brand-mark" src="../assets/dos-mark.png" alt="">
+        <span class="brand-word">DOS</span><span class="brand-sub">Workspace</span>
+      </a>
+      <p class="tag">One workspace. Every research tool. Built by Day One Strategy.</p>
+    </div>
+    <div>
+      <h5>Product</h5>
+      <ul><li><a href="#">Features</a></li><li><a href="#">Integrations</a></li><li><a href="#">Pricing</a></li><li><a href="#">Changelog</a></li></ul>
+    </div>
+    <div>
+      <h5>Company</h5>
+      <ul><li><a href="#">About</a></li><li><a href="#">Customers</a></li><li><a href="#">Contact</a></li></ul>
+    </div>
+    <div>
+      <h5>Resources</h5>
+      <ul><li><a href="#">Docs</a></li><li><a href="#">Templates</a></li><li><a href="#">Security</a></li></ul>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 Day One Strategy</div>
+      <div class="links"><a href="#">Privacy</a><span>·</span><a href="#">Terms</a><span>·</span><a href="#">Cookies</a></div>
+    </div>
+  </footer>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DOS Workspace — Dashboard</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { background: var(--surface); }
+.app { width: 1440px; min-height: 1024px; margin: 0 auto; display: grid; grid-template-columns: 56px 1fr; background: var(--surface); }
+
+/* sidebar */
+.sb {
+  position: sticky; top: 0;
+  background: #fff;
+  border-right: 1px solid var(--border);
+  height: 100vh; min-height: 1024px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0 18px;
+}
+.sb-brand { width: 24px; height: 24px; margin-bottom: 24px; }
+.sb-group { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 0 8px; }
+.sb-item {
+  position: relative;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  cursor: pointer;
+}
+.sb-item:hover { background: var(--surface); color: var(--text); }
+.sb-item.active { color: var(--accent); background: var(--accent-soft); }
+.sb-item.active::before {
+  content: ""; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0;
+}
+.sb-divider { width: 24px; height: 1px; background: var(--border); margin: 8px 0; }
+.sb-bottom { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+/* main */
+.main { display: flex; flex-direction: column; min-height: 1024px; }
+.topbar {
+  height: 56px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff;
+}
+.bread { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.bread .crumb { color: var(--text-2); }
+.bread .sep { color: var(--text-3); }
+.bread .here { color: var(--text); font-weight: 500; }
+.top-right { display: flex; align-items: center; gap: 14px; }
+.search-input {
+  width: 280px; height: 36px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--text-3); font-size: 13px; background: var(--surface);
+}
+.search-input .kbd {
+  margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; background: #fff;
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm); color: var(--text-2); position: relative; cursor: pointer;
+}
+.icon-btn:hover { background: var(--surface); color: var(--text); }
+.icon-btn .dot {
+  position: absolute; top: 8px; right: 9px;
+  width: 7px; height: 7px; border-radius: 999px; background: var(--status-error);
+  border: 2px solid #fff;
+}
+
+/* content */
+.content { padding: 32px 32px 56px; display: grid; grid-template-columns: 1fr 280px; gap: 32px; }
+
+.welcome { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+.welcome h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 4px; }
+.welcome .date { color: var(--text-3); font-size: 13px; }
+.welcome .meta { text-align: right; }
+.welcome .meta .label-eyebrow { display: block; margin-bottom: 4px; }
+.welcome .meta .v { font-size: 13px; color: var(--text-2); font-family: var(--mono); }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+.stat {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-xl); padding: 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.stat .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; color: var(--text-3); }
+.stat .row { display: flex; align-items: baseline; gap: 10px; }
+.stat .val { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+.stat .delta { font-size: 12px; color: var(--status-success); font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+.stat .delta.warn { color: var(--status-warning); }
+.stat .delta.flat { color: var(--text-3); }
+.stat .spark {
+  display: flex; align-items: flex-end; gap: 3px; height: 24px;
+}
+.stat .spark span {
+  flex: 1; background: var(--accent-soft); border-radius: 2px;
+}
+.stat .spark span.hi { background: var(--accent); }
+
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 0 16px;
+}
+.section-head h2 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.section-head .right { display: flex; align-items: center; gap: 12px; }
+.section-head .right .seg {
+  display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+}
+.section-head .right .seg button {
+  height: 26px; padding: 0 10px; border-radius: 4px; border: 0; background: transparent;
+  font-size: 12px; color: var(--text-2);
+}
+.section-head .right .seg button.on { background: var(--surface); color: var(--text); }
+.section-head .right a.view-all {
+  color: var(--accent); font-size: 13px; text-decoration: none; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+.tbl-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+.tbl-card .table th:first-child, .tbl-card .table td:first-child { padding-left: 20px; }
+.tbl-card .table th:last-child, .tbl-card .table td:last-child { padding-right: 20px; }
+.tbl-card .table td { font-size: 14px; }
+.proj { display: flex; flex-direction: column; gap: 2px; }
+.proj .nm { font-weight: 500; color: var(--text); }
+.proj .id { font-size: 11px; color: var(--text-3); font-family: var(--mono); letter-spacing: 0.02em; }
+.client { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 13px; }
+.client .mono-sq {
+  width: 24px; height: 24px; border-radius: 4px;
+  background: var(--surface); display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--text-2);
+}
+.tool-row { display: flex; align-items: center; gap: 4px; color: var(--text-3); }
+.tool-row .t {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; background: var(--surface);
+  color: var(--text-2);
+}
+.tool-row .t.on { color: var(--accent); background: var(--accent-soft); }
+.upd { color: var(--text-2); font-size: 13px; }
+.tbl-actions { display: flex; justify-content: flex-end; }
+
+.qa-stack { display: flex; flex-direction: column; gap: 24px; }
+.qa-card {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-xl); padding: 20px;
+}
+.qa-card h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; color: var(--text-3); margin: 0 0 16px; }
+.qa-btn {
+  width: 100%; height: 40px; padding: 0 12px;
+  border-radius: var(--r-sm); border: 1px solid var(--border); background: #fff; color: var(--text);
+  display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer;
+  text-align: left;
+}
+.qa-btn:hover { background: var(--surface); }
+.qa-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.qa-btn.primary:hover { background: #16294A; }
+.qa-stack-btns { display: flex; flex-direction: column; gap: 8px; }
+.qa-card .arrow { margin-left: auto; color: var(--text-3); }
+.qa-btn.primary .arrow { color: rgba(255,255,255,0.7); }
+
+.field-item {
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.field-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.field-item:first-child { padding-top: 0; }
+.field-item .ttl { font-size: 13px; font-weight: 500; }
+.field-item .meta { font-size: 11px; color: var(--text-3); font-family: var(--mono); margin-bottom: 8px; }
+.bar { height: 6px; border-radius: 3px; background: var(--surface); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.field-item .pace { display: flex; justify-content: space-between; font-size: 11px; margin-top: 6px; color: var(--text-2); }
+.field-item .pace .good { color: var(--status-success); }
+.field-item .pace .warn { color: var(--status-warning); }
+
+.activity-item {
+  display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: 0; }
+.activity-item .dot {
+  width: 6px; height: 6px; border-radius: 999px; background: var(--accent); margin-top: 8px; flex: none;
+}
+.activity-item .txt { font-size: 13px; line-height: 1.4; }
+.activity-item .txt b { font-weight: 500; }
+.activity-item .ts { font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sb" data-screen-label="Dashboard — Sidebar">
+    <img class="sb-brand" src="../assets/dos-mark.png" alt="DOS">
+    <div class="sb-group">
+      <div class="sb-item active" title="Home"><span data-icon="home"></span></div>
+      <div class="sb-item" title="Projects"><span data-icon="folder"></span></div>
+      <div class="sb-item" title="Screeners"><span data-icon="file-text"></span></div>
+      <div class="sb-item" title="Quotas"><span data-icon="bar-chart"></span></div>
+      <div class="sb-item" title="Invitely"><span data-icon="send"></span></div>
+      <div class="sb-item" title="Reports"><span data-icon="layout"></span></div>
+      <div class="sb-divider"></div>
+      <div class="sb-item" title="Team"><span data-icon="users"></span></div>
+      <div class="sb-item" title="Settings"><span data-icon="settings"></span></div>
+    </div>
+    <div class="sb-bottom">
+      <div class="sb-item" title="Help"><span data-icon="help-circle"></span></div>
+      <div class="avatar">GT</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar" data-screen-label="Dashboard — Topbar">
+      <div class="bread">
+        <span class="crumb">Workspace</span>
+        <span class="sep">/</span>
+        <span class="here">Dashboard</span>
+      </div>
+      <div class="top-right">
+        <div class="search-input">
+          <span data-icon="search"></span>
+          <span>Search projects, screeners, people…</span>
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="icon-btn" title="Notifications"><span data-icon="bell"></span><span class="dot"></span></button>
+        <div class="avatar">GT</div>
+      </div>
+    </header>
+
+    <section class="content" data-screen-label="Dashboard — Content">
+      <div>
+        <div class="welcome">
+          <div>
+            <h1>Good morning, Gedas.</h1>
+            <div class="date">Thursday, 14 May 2026 — 4 projects need your attention</div>
+          </div>
+          <div class="meta">
+            <span class="label-eyebrow">Workspace</span>
+            <div class="v">DOS / Day One Strategy</div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="lbl">Active projects</div>
+            <div class="row"><div class="val">12</div><div class="delta">↑ 2 vs last week</div></div>
+            <div class="spark">
+              <span style="height:30%"></span><span style="height:55%"></span><span style="height:40%"></span>
+              <span style="height:70%"></span><span style="height:60%"></span><span style="height:80%"></span><span class="hi" style="height:100%"></span>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="lbl">In field</div>
+            <div class="row"><div class="val">4</div><div class="delta flat">— flat</div></div>
+            <div class="spark">
+              <span style="height:60%"></span><span style="height:50%"></span><span style="height:65%"></span>
+              <span style="height:55%"></span><span style="height:60%"></span><span style="height:60%"></span><span class="hi" style="height:60%"></span>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="lbl">Pending setup</div>
+            <div class="row"><div class="val">3</div><div class="delta warn">↑ 1 needs review</div></div>
+            <div class="spark">
+              <span style="height:20%"></span><span style="height:30%"></span><span style="height:25%"></span>
+              <span style="height:40%"></span><span style="height:35%"></span><span style="height:30%"></span><span class="hi" style="height:48%"></span>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="lbl">Completed (30d)</div>
+            <div class="row"><div class="val">27</div><div class="delta">↑ 18%</div></div>
+            <div class="spark">
+              <span style="height:40%"></span><span style="height:50%"></span><span style="height:70%"></span>
+              <span style="height:55%"></span><span style="height:75%"></span><span style="height:85%"></span><span class="hi" style="height:92%"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <h2>Recent projects</h2>
+          <div class="right">
+            <div class="seg">
+              <button class="on">All</button>
+              <button>Mine</button>
+              <button>Starred</button>
+            </div>
+            <a class="view-all" href="#">View all <span data-icon="arrow-right"></span></a>
+          </div>
+        </div>
+
+        <div class="tbl-card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 34%;">Project</th>
+                <th>Client</th>
+                <th>Status</th>
+                <th>Tools</th>
+                <th>Last updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="proj"><span class="nm">Automotive Segmentation Study</span><span class="id">PRJ-2026-0041 · 5 markets</span></div>
+                </td>
+                <td><div class="client"><span class="mono-sq">TC</span>TechCorp</div></td>
+                <td><span class="status status-infield">In field</span></td>
+                <td><div class="tool-row"><span class="t on" data-icon="file-text"></span><span class="t on" data-icon="bar-chart"></span><span class="t on" data-icon="send"></span><span class="t" data-icon="layout"></span></div></td>
+                <td><div class="upd">2 hours ago</div></td>
+                <td><div class="tbl-actions"><button class="icon-btn"><span data-icon="more-vertical"></span></button></div></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="proj"><span class="nm">Financial Services Usage Survey</span><span class="id">PRJ-2026-0043 · UK only</span></div>
+                </td>
+                <td><div class="client"><span class="mono-sq" style="background:#EEF1F5;color:var(--accent);">FG</span>FinGroup</div></td>
+                <td><span class="status status-setup">Setup</span></td>
+                <td><div class="tool-row"><span class="t on" data-icon="file-text"></span><span class="t" data-icon="bar-chart"></span><span class="t" data-icon="send"></span><span class="t" data-icon="layout"></span></div></td>
+                <td><div class="upd">1 day ago</div></td>
+                <td><div class="tbl-actions"><button class="icon-btn"><span data-icon="more-vertical"></span></button></div></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="proj"><span class="nm">Healthcare Brand Tracker W24</span><span class="id">PRJ-2026-0038 · 8 markets</span></div>
+                </td>
+                <td><div class="client"><span class="mono-sq" style="background:#F0EAE0;color:var(--status-warning);">MI</span>MedInsights</div></td>
+                <td><span class="status status-completed">Completed</span></td>
+                <td><div class="tool-row"><span class="t on" data-icon="file-text"></span><span class="t on" data-icon="bar-chart"></span><span class="t on" data-icon="send"></span><span class="t on" data-icon="layout"></span></div></td>
+                <td><div class="upd">3 days ago</div></td>
+                <td><div class="tbl-actions"><button class="icon-btn"><span data-icon="more-vertical"></span></button></div></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="proj"><span class="nm">Retail CX Pulse — Q2</span><span class="id">PRJ-2026-0044 · Draft</span></div>
+                </td>
+                <td><div class="client"><span class="mono-sq" style="background:#F4E9E9;color:var(--status-error);">RC</span>RetailCo</div></td>
+                <td><span class="status status-draft">Draft</span></td>
+                <td><div class="tool-row"><span class="t" data-icon="file-text"></span><span class="t" data-icon="bar-chart"></span><span class="t" data-icon="send"></span><span class="t" data-icon="layout"></span></div></td>
+                <td><div class="upd">5 days ago</div></td>
+                <td><div class="tbl-actions"><button class="icon-btn"><span data-icon="more-vertical"></span></button></div></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="proj"><span class="nm">B2B SaaS Buyer Journey</span><span class="id">PRJ-2026-0036 · 3 markets</span></div>
+                </td>
+                <td><div class="client"><span class="mono-sq" style="background:#E6F1EC;color:var(--status-success);">NW</span>Northwind</div></td>
+                <td><span class="status status-infield">In field</span></td>
+                <td><div class="tool-row"><span class="t on" data-icon="file-text"></span><span class="t on" data-icon="bar-chart"></span><span class="t" data-icon="send"></span><span class="t" data-icon="layout"></span></div></td>
+                <td><div class="upd">6 days ago</div></td>
+                <td><div class="tbl-actions"><button class="icon-btn"><span data-icon="more-vertical"></span></button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="qa-stack">
+        <div class="qa-card">
+          <h3>Quick actions</h3>
+          <div class="qa-stack-btns">
+            <button class="qa-btn primary"><span data-icon="plus"></span> New project<span class="arrow" data-icon="arrow-right"></span></button>
+            <button class="qa-btn"><span data-icon="copy"></span> Import from template<span class="arrow" data-icon="arrow-right"></span></button>
+            <button class="qa-btn"><span data-icon="users"></span> Invite a team member<span class="arrow" data-icon="arrow-right"></span></button>
+          </div>
+        </div>
+
+        <div class="qa-card">
+          <h3>Field health</h3>
+          <div class="field-item">
+            <div class="ttl">Automotive Segmentation</div>
+            <div class="meta">640 / 1,000 — closes 28 May</div>
+            <div class="bar"><span style="width:64%"></span></div>
+            <div class="pace"><span>64% complete</span><span class="good">On pace</span></div>
+          </div>
+          <div class="field-item">
+            <div class="ttl">FinGroup Usage Survey</div>
+            <div class="meta">220 / 1,000 — closes 22 May</div>
+            <div class="bar"><span style="width:22%;background:var(--status-warning);"></span></div>
+            <div class="pace"><span>22% complete</span><span class="warn">Behind pace</span></div>
+          </div>
+          <div class="field-item">
+            <div class="ttl">B2B SaaS Buyer Journey</div>
+            <div class="meta">408 / 600 — closes 31 May</div>
+            <div class="bar"><span style="width:68%"></span></div>
+            <div class="pace"><span>68% complete</span><span class="good">On pace</span></div>
+          </div>
+        </div>
+
+        <div class="qa-card">
+          <h3>Activity</h3>
+          <div class="activity-item">
+            <div class="dot"></div>
+            <div><div class="txt"><b>Sarah Klein</b> published screener v3 for Automotive Segmentation.</div><div class="ts">12 min ago</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="dot" style="background:var(--status-warning);"></div>
+            <div><div class="txt">FinGroup quota for UK 25–34 hit <b>soft cap</b>.</div><div class="ts">38 min ago</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="dot" style="background:var(--status-success);"></div>
+            <div><div class="txt"><b>Marcus Lee</b> closed field on Healthcare Tracker W24.</div><div class="ts">2 h ago</div></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

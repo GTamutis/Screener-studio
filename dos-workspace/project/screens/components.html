@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DOS Workspace — Component Sheet</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { background: var(--surface); }
+.sheet { width: 1440px; margin: 0 auto; padding: 56px 64px 80px; }
+.sheet-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 40px; }
+.sheet-head .brand { gap: 12px; }
+.sheet-head .brand img { width: 24px; height: 24px; }
+.sheet-head .meta {
+  font-family: var(--mono); font-size: 11px; color: var(--text-3); text-align: right;
+  letter-spacing: 0.04em;
+}
+.sheet-head h1 { font-size: 36px; font-weight: 600; letter-spacing: -0.025em; margin: 8px 0 6px; }
+.sheet-head .desc { color: var(--text-2); font-size: 14px; max-width: 480px; }
+
+.block {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 28px;
+  margin-bottom: 20px;
+}
+.block-head {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.block-head h2 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: -0.005em; }
+.block-head .id { font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.04em; }
+.block-head .desc { margin-left: auto; font-size: 12px; color: var(--text-3); }
+
+.row-grid { display: grid; gap: 16px; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.cols-6 { grid-template-columns: repeat(6, 1fr); }
+
+.cell {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  min-height: 90px;
+  justify-content: center;
+}
+.cell .cap {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cell.dense { padding: 14px; min-height: auto; }
+
+/* ——— Color swatches ——— */
+.color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.swatch {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: #fff;
+}
+.swatch .chip { height: 84px; }
+.swatch .meta {
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.swatch .nm { font-size: 12px; font-weight: 500; }
+.swatch .hx { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+
+/* ——— Type ——— */
+.type-row {
+  display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: baseline;
+  padding: 18px 0; border-bottom: 1px solid var(--border);
+}
+.type-row:last-child { border-bottom: 0; }
+.type-row .lbl { font-family: var(--mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.04em; }
+.type-row .lbl strong { color: var(--text); display: block; font-size: 12px; margin-bottom: 2px; font-family: var(--font); font-weight: 600; letter-spacing: 0; }
+.type-row .ex { color: var(--text); }
+
+/* ——— button states grid ——— */
+.btn-disabled { background: var(--surface); color: var(--text-3); cursor: not-allowed; border: 1px solid var(--border); }
+.btn-loading { background: var(--accent); color: rgba(255,255,255,0.6); cursor: progress; position: relative; }
+.btn-loading::before {
+  content: ""; width: 14px; height: 14px; border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.4); border-top-color: #fff;
+  animation: spin 0.7s linear infinite; margin-right: 4px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-hover { background: #16294A; color: #fff; }
+.btn-active { background: #0F1F38; color: #fff; }
+.btn-focus { background: var(--accent); color: #fff; outline: 3px solid rgba(30,58,95,0.25); outline-offset: 2px; }
+.btn-ghost-hover { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost-active { background: #ECECE9; color: var(--text); border: 1px solid var(--border-strong); }
+.btn-ghost-focus { background: #fff; color: var(--text); border: 1px solid var(--border); box-shadow: 0 0 0 3px rgba(30,58,95,0.15); }
+.btn-ghost-disabled { background: #fff; color: var(--text-3); border: 1px solid var(--border); cursor: not-allowed; }
+
+/* ——— Sidebar previews ——— */
+.sb-previews { display: grid; grid-template-columns: 56px 220px 1fr; gap: 24px; align-items: stretch; }
+.sb-prev {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  height: 460px;
+  padding: 14px 0;
+  display: flex; flex-direction: column; align-items: center;
+}
+.sb-prev .mk { width: 22px; height: 22px; margin-bottom: 16px; }
+.sb-prev .it {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; color: var(--text-3); margin-bottom: 2px;
+  position: relative;
+}
+.sb-prev .it.active { color: var(--accent); background: var(--accent-soft); }
+.sb-prev .it.active::before {
+  content:""; position: absolute; left: -10px; top: 6px; bottom: 6px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0;
+}
+.sb-prev.expanded { align-items: stretch; padding: 14px; height: 460px; }
+.sb-prev.expanded .head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 6px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.sb-prev.expanded .head img { width: 22px; height: 22px; }
+.sb-prev.expanded .head span { font-size: 13px; font-weight: 500; }
+.sb-prev.expanded .lk {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  position: relative;
+}
+.sb-prev.expanded .lk.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.sb-prev.expanded .lk.active::before {
+  content:""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0;
+}
+.sb-prev .annot {
+  font-family: var(--mono); font-size: 10px; color: var(--text-3); letter-spacing: 0.04em; padding: 10px 6px 4px;
+  text-transform: uppercase;
+}
+
+/* ——— Avatars ——— */
+.av-row { display: flex; align-items: center; gap: 32px; }
+.av-stack { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.av-stack .lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+
+/* dropdown */
+.dropdown {
+  width: 220px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 24px -8px rgba(20,28,46,0.18), 0 0 0 1px rgba(20,28,46,0.02);
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 13px; color: var(--text);
+}
+.dropdown-item:hover { background: var(--surface); }
+.dropdown-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.dropdown-item .kbd { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+.dropdown-item.danger { color: var(--status-error); }
+.dropdown-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.dropdown-header { padding: 8px 10px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); font-weight: 500; }
+
+/* stepper preview */
+.stepper-prev { display: flex; align-items: center; gap: 12px; max-width: 480px; }
+.stepper-prev .step .num {
+  width: 26px; height: 26px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  background: #fff; border: 1px solid var(--border); color: var(--text-3);
+}
+.stepper-prev .step.done .num { background: var(--accent); color: #fff; border-color: var(--accent); }
+.stepper-prev .step.current .num { background: var(--accent); color: #fff; border-color: var(--accent); }
+.stepper-prev .step { display: flex; align-items: center; gap: 8px; }
+.stepper-prev .step .lbl { font-size: 12px; color: var(--text-3); font-weight: 500; }
+.stepper-prev .step.done .lbl, .stepper-prev .step.current .lbl { color: var(--text); }
+.stepper-prev .bar { flex: 1; height: 1px; background: var(--border); }
+.stepper-prev .bar.done { background: var(--accent); }
+
+/* radius / spacing scale */
+.scale-row { display: flex; align-items: flex-end; gap: 24px; }
+.scale-row .item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.scale-row .swatch-sq { width: 64px; height: 64px; background: var(--accent-soft); border: 1px solid #DDE5EE; }
+.scale-row .lbl { font-family: var(--mono); font-size: 10px; color: var(--text-3); }
+
+/* shadow scale */
+.shadow-cell {
+  height: 100px; background: #fff; border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+}
+.shadow-cell.s1 { box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.shadow-cell.s2 { box-shadow: 0 4px 12px -2px rgba(20,28,46,0.08); }
+.shadow-cell.s3 { box-shadow: 0 8px 24px -8px rgba(20,28,46,0.18); }
+.shadow-cell.s4 { box-shadow: 0 32px 64px -16px rgba(20,28,46,0.32); }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="sheet-head" data-screen-label="Component Sheet">
+    <div>
+      <a class="brand" href="#">
+        <img class="brand-mark" src="../assets/dos-mark.png" alt="">
+        <span class="brand-word">DOS</span><span class="brand-sub">Workspace</span>
+      </a>
+      <h1>Component sheet</h1>
+      <p class="desc">Foundational tokens and components used across DOS Workspace. Apply consistently — color and motion are sparing; weight, scale and structure carry the hierarchy.</p>
+    </div>
+    <div class="meta">
+      v0.1 · DRAFT<br>
+      14 MAY 2026<br>
+      DESIGN — DAY ONE STRATEGY
+    </div>
+  </header>
+
+  <!-- COLOR -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Color</h2><span class="id">01 · TOKENS</span>
+      <span class="desc">Use color for state and emphasis only.</span>
+    </div>
+    <div class="color-grid">
+      <div class="swatch"><div class="chip" style="background:#1E3A5F;"></div><div class="meta"><span class="nm">Accent · primary</span><span class="hx">#1E3A5F</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#E8E4DE;"></div><div class="meta"><span class="nm">Accent · tint</span><span class="hx">#E8E4DE</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#F7F7F5;"></div><div class="meta"><span class="nm">Surface</span><span class="hx">#F7F7F5</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#FFFFFF;border-bottom:1px solid var(--border);"></div><div class="meta"><span class="nm">Background</span><span class="hx">#FFFFFF</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#EBEBEB;"></div><div class="meta"><span class="nm">Border</span><span class="hx">#EBEBEB</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#1A1A1A;"></div><div class="meta"><span class="nm">Text</span><span class="hx">#1A1A1A</span></div></div>
+
+      <div class="swatch"><div class="chip" style="background:#6B6B6B;"></div><div class="meta"><span class="nm">Text · secondary</span><span class="hx">#6B6B6B</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#9B9B9B;"></div><div class="meta"><span class="nm">Text · tertiary</span><span class="hx">#9B9B9B</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#2D7D5A;"></div><div class="meta"><span class="nm">Status · success</span><span class="hx">#2D7D5A</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#C47B1E;"></div><div class="meta"><span class="nm">Status · warning</span><span class="hx">#C47B1E</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#C43B3B;"></div><div class="meta"><span class="nm">Status · error</span><span class="hx">#C43B3B</span></div></div>
+      <div class="swatch"><div class="chip" style="background:#EEF1F5;"></div><div class="meta"><span class="nm">Accent · soft</span><span class="hx">#EEF1F5</span></div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Typography</h2><span class="id">02 · INTER</span>
+      <span class="desc">Hierarchy through weight and size — never color.</span>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>Display</strong>52 / 1.05 / 600 / -0.025em</div>
+      <div class="ex" style="font-size:52px;font-weight:600;letter-spacing:-0.025em;line-height:1.05;">One workspace.</div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>H1</strong>32 / 1.15 / 600 / -0.02em</div>
+      <div class="ex" style="font-size:32px;font-weight:600;letter-spacing:-0.02em;">Recent projects</div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>H2</strong>24 / 1.25 / 600 / -0.015em</div>
+      <div class="ex" style="font-size:24px;font-weight:600;letter-spacing:-0.015em;">Good morning, Gedas.</div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>H3 / Card title</strong>16 / 1.4 / 600 / -0.01em</div>
+      <div class="ex" style="font-size:16px;font-weight:600;">Project Hub</div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>Body</strong>14 / 1.6 / 400</div>
+      <div class="ex" style="font-size:14px;color:var(--text-2);">Create a project once. Every tool picks it up automatically.</div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>Label · eyebrow</strong>12 / 500 / 0.04em / UPPER</div>
+      <div class="ex"><span class="label-eyebrow">What's inside</span></div>
+    </div>
+    <div class="type-row">
+      <div class="lbl"><strong>Mono</strong>JetBrains Mono · IDs &amp; numerics</div>
+      <div class="ex" style="font-family:var(--mono);font-size:13px;color:var(--text-2);">PRJ-2026-0041 · 1,240 / 1,000 · ⌘K</div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Buttons</h2><span class="id">03 · ACTIONS</span>
+      <span class="desc">Primary, ghost · 5 states each.</span>
+    </div>
+    <div class="row-grid cols-5" style="grid-template-columns:repeat(5,1fr);">
+      <div class="cell"><span class="cap">Default</span><button class="btn btn-primary">New project</button></div>
+      <div class="cell"><span class="cap">Hover</span><button class="btn btn-hover">New project</button></div>
+      <div class="cell"><span class="cap">Active</span><button class="btn btn-active">New project</button></div>
+      <div class="cell"><span class="cap">Focus</span><button class="btn btn-focus">New project</button></div>
+      <div class="cell"><span class="cap">Disabled</span><button class="btn btn-disabled">New project</button></div>
+
+      <div class="cell"><span class="cap">Ghost · default</span><button class="btn btn-ghost">Cancel</button></div>
+      <div class="cell"><span class="cap">Ghost · hover</span><button class="btn btn-ghost-hover">Cancel</button></div>
+      <div class="cell"><span class="cap">Ghost · active</span><button class="btn btn-ghost-active">Cancel</button></div>
+      <div class="cell"><span class="cap">Ghost · focus</span><button class="btn btn-ghost-focus">Cancel</button></div>
+      <div class="cell"><span class="cap">Ghost · disabled</span><button class="btn btn-ghost-disabled">Cancel</button></div>
+
+      <div class="cell"><span class="cap">Loading</span><button class="btn btn-loading">Creating…</button></div>
+      <div class="cell"><span class="cap">Icon-only</span><button class="icon-btn" style="border:1px solid var(--border);background:#fff;"><span data-icon="plus"></span></button></div>
+      <div class="cell"><span class="cap">With icon</span><button class="btn btn-primary"><span data-icon="plus"></span> Invite</button></div>
+      <div class="cell"><span class="cap">Text link</span><a href="#" style="color:var(--accent);font-weight:500;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">See a demo <span data-icon="arrow-right"></span></a></div>
+      <div class="cell"><span class="cap">Destructive</span><button class="btn" style="background:#fff;color:var(--status-error);border:1px solid #F0D6D6;">Remove member</button></div>
+    </div>
+  </section>
+
+  <!-- INPUTS -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Inputs</h2><span class="id">04 · FORM</span>
+      <span class="desc">40px height · 1px border · 6px radius.</span>
+    </div>
+    <div class="row-grid cols-4">
+      <div class="cell"><span class="cap">Default</span><input class="input" placeholder="Project name"></div>
+      <div class="cell"><span class="cap">Focus</span><input class="input" value="Automotive Segmentation Study" style="border-color:var(--accent);box-shadow:0 0 0 3px rgba(30,58,95,0.12);"></div>
+      <div class="cell"><span class="cap">Error</span><div style="width:100%;"><input class="input is-error" value="Bad sample size"><div style="font-size:11px;color:var(--status-error);margin-top:6px;">Must be greater than 0.</div></div></div>
+      <div class="cell"><span class="cap">Disabled</span><input class="input" value="PRJ-2026-0041" disabled style="background:var(--surface);color:var(--text-3);"></div>
+
+      <div class="cell"><span class="cap">Select</span><div class="select" style="background:#fff;border:1px solid var(--border);border-radius:6px;height:40px;width:100%;padding:0 12px;display:flex;align-items:center;justify-content:space-between;"><span>Quantitative</span><span style="color:var(--text-3);" data-icon="chevron-down"></span></div></div>
+      <div class="cell"><span class="cap">Search</span><div class="select" style="background:#fff;border:1px solid var(--border);border-radius:6px;height:40px;width:100%;padding:0 12px;display:flex;align-items:center;gap:8px;color:var(--text-3);"><span data-icon="search"></span><span>Search projects…</span></div></div>
+      <div class="cell"><span class="cap">Tag input</span><div style="width:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;min-height:40px;"><span class="tag" style="background:var(--accent-soft);color:var(--accent);padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;">UK</span><span class="tag" style="background:var(--accent-soft);color:var(--accent);padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;">DE</span></div></div>
+      <div class="cell"><span class="cap">Date</span><div style="height:40px;width:100%;padding:0 12px;border:1px solid var(--border);border-radius:6px;background:#fff;display:flex;align-items:center;gap:10px;"><span data-icon="calendar" style="color:var(--text-3);"></span>18 May 2026</div></div>
+    </div>
+  </section>
+
+  <!-- BADGES + STATUS -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Status pills</h2><span class="id">05 · BADGES</span>
+      <span class="desc">24px height · dot prefix · 6px radius.</span>
+    </div>
+    <div class="row-grid" style="grid-template-columns: repeat(7, 1fr);">
+      <div class="cell"><span class="cap">In field</span><span class="status status-infield">In field</span></div>
+      <div class="cell"><span class="cap">Setup</span><span class="status status-setup">Setup</span></div>
+      <div class="cell"><span class="cap">Draft</span><span class="status status-draft">Draft</span></div>
+      <div class="cell"><span class="cap">Completed</span><span class="status status-completed">Completed</span></div>
+      <div class="cell"><span class="cap">Active</span><span class="status status-active">Active</span></div>
+      <div class="cell"><span class="cap">Pending</span><span class="status status-pending">Pending</span></div>
+      <div class="cell"><span class="cap">Inactive</span><span class="status status-inactive">Inactive</span></div>
+    </div>
+    <div class="row-grid cols-4" style="margin-top:16px;">
+      <div class="cell"><span class="cap">Role · Owner</span><span class="role-tag owner">Owner</span></div>
+      <div class="cell"><span class="cap">Role · Editor</span><span class="role-tag editor">Editor</span></div>
+      <div class="cell"><span class="cap">Role · Viewer</span><span class="role-tag viewer">Viewer</span></div>
+      <div class="cell"><span class="cap">Coming soon</span><span class="status status-coming">Coming soon</span></div>
+    </div>
+
+    <style>
+      .role-tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+      .role-tag.owner { background: var(--accent-soft); color: var(--accent); }
+      .role-tag.editor { background: #E6F1EC; color: var(--status-success); }
+      .role-tag.viewer { background: #EFEFEF; color: var(--text-2); }
+    </style>
+  </section>
+
+  <!-- SIDEBAR -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Sidebar</h2><span class="id">06 · NAVIGATION</span>
+      <span class="desc">Collapsed 56px · Expanded 220px · 200ms ease.</span>
+    </div>
+    <div class="sb-previews">
+      <div class="sb-prev">
+        <img class="mk" src="../assets/dos-mark.png" alt="">
+        <div class="it active"><span data-icon="home"></span></div>
+        <div class="it"><span data-icon="folder"></span></div>
+        <div class="it"><span data-icon="file-text"></span></div>
+        <div class="it"><span data-icon="bar-chart"></span></div>
+        <div class="it"><span data-icon="send"></span></div>
+        <div class="it"><span data-icon="layout"></span></div>
+        <div style="width: 24px; height: 1px; background: var(--border); margin: 8px 0;"></div>
+        <div class="it"><span data-icon="users"></span></div>
+        <div class="it"><span data-icon="settings"></span></div>
+        <div class="annot">56px collapsed</div>
+      </div>
+      <div class="sb-prev expanded">
+        <div class="head">
+          <img src="../assets/dos-mark.png" alt="">
+          <span>DOS Workspace</span>
+        </div>
+        <div class="lk active"><span data-icon="home"></span> Home</div>
+        <div class="lk"><span data-icon="folder"></span> Projects</div>
+        <div class="lk"><span data-icon="file-text"></span> Screeners</div>
+        <div class="lk"><span data-icon="bar-chart"></span> Quotas</div>
+        <div class="lk"><span data-icon="send"></span> Invitely</div>
+        <div class="lk"><span data-icon="layout"></span> Reports</div>
+        <div style="height: 1px; background: var(--border); margin: 12px 0;"></div>
+        <div class="lk"><span data-icon="users"></span> Team</div>
+        <div class="lk"><span data-icon="settings"></span> Settings</div>
+        <div class="annot">220px expanded</div>
+      </div>
+      <div class="cell" style="background:#fff;padding:24px;">
+        <span class="cap">Item — anatomy</span>
+        <div style="display:flex;flex-direction:column;gap:6px;width:100%;">
+          <div class="sb-link" style="background:var(--accent-soft);color:var(--accent);font-weight:500;width:100%;border-radius:6px;padding:8px 10px;display:flex;gap:12px;align-items:center;position:relative;">
+            <span class="ic"><span data-icon="folder"></span></span> Projects <span class="count" style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--accent);background:#fff;padding:2px 6px;border-radius:4px;">12</span>
+          </div>
+          <div class="annot" style="font-family:var(--mono);font-size:10px;color:var(--text-3);letter-spacing:0.06em;text-transform:uppercase;">3px accent rail on active</div>
+          <div style="height:8px;"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;width:100%;">
+            <div class="annot" style="text-transform:uppercase;font-family:var(--mono);font-size:10px;color:var(--text-3);">States</div>
+            <div class="sb-link" style="width:100%;padding:8px 10px;border-radius:6px;color:var(--text-2);display:flex;gap:12px;align-items:center;"><span data-icon="bar-chart"></span> Quotas <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--text-3);">default</span></div>
+            <div class="sb-link" style="width:100%;padding:8px 10px;border-radius:6px;color:var(--text);background:var(--surface);display:flex;gap:12px;align-items:center;"><span data-icon="bar-chart"></span> Quotas <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--text-3);">hover</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AVATARS + TOGGLE + STEPPER -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Avatars · toggle · stepper</h2><span class="id">07 · MISC</span>
+      <span class="desc">Initials avatars · toggle (24×40) · 3-step indicator.</span>
+    </div>
+    <div class="row-grid cols-3">
+      <div class="cell" style="min-height:160px;">
+        <span class="cap">Avatars · 24 / 32 / 44</span>
+        <div class="av-row">
+          <div class="av-stack"><div class="avatar avatar-24">GT</div><span class="lbl">24</span></div>
+          <div class="av-stack"><div class="avatar">GT</div><span class="lbl">32</span></div>
+          <div class="av-stack"><div class="avatar avatar-44">GT</div><span class="lbl">44</span></div>
+          <div class="av-stack"><div class="avatar avatar-44" style="background:#E6F1EC;color:var(--status-success);">SK</div><span class="lbl">tint</span></div>
+        </div>
+      </div>
+      <div class="cell" style="min-height:160px;">
+        <span class="cap">Toggle</span>
+        <div style="display:flex;align-items:center;gap:24px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><div class="toggle on" style="width:36px;height:20px;border-radius:999px;background:var(--accent);position:relative;"><span style="content:'';position:absolute;left:18px;top:2px;width:16px;height:16px;border-radius:999px;background:#fff;display:block;box-shadow:0 1px 2px rgba(0,0,0,0.15);"></span></div><span class="lbl" style="font-family:var(--mono);font-size:10px;color:var(--text-3);">on</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><div class="toggle" style="width:36px;height:20px;border-radius:999px;background:var(--border-strong);position:relative;"><span style="position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:999px;background:#fff;display:block;box-shadow:0 1px 2px rgba(0,0,0,0.15);"></span></div><span class="lbl" style="font-family:var(--mono);font-size:10px;color:var(--text-3);">off</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><div class="toggle" style="width:36px;height:20px;border-radius:999px;background:var(--border);position:relative;opacity:0.5;"><span style="position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:999px;background:#fff;display:block;"></span></div><span class="lbl" style="font-family:var(--mono);font-size:10px;color:var(--text-3);">disabled</span></div>
+        </div>
+      </div>
+      <div class="cell" style="min-height:160px;">
+        <span class="cap">Stepper · step 2 active</span>
+        <div class="stepper-prev">
+          <div class="step done"><span class="num"><span data-icon="check"></span></span><span class="lbl">Details</span></div>
+          <div class="bar done"></div>
+          <div class="step current"><span class="num">2</span><span class="lbl">Team</span></div>
+          <div class="bar"></div>
+          <div class="step"><span class="num">3</span><span class="lbl">Tools</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dropdown -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Dropdown menu</h2><span class="id">08 · OVERLAYS</span>
+      <span class="desc">220px width · 6px radius · soft shadow.</span>
+    </div>
+    <div class="row-grid cols-3" style="align-items:start;">
+      <div class="cell" style="background:var(--surface);align-items:center;min-height:280px;">
+        <div class="dropdown">
+          <div class="dropdown-header">Project</div>
+          <div class="dropdown-item"><span data-icon="external-link"></span> Open project<span class="kbd">↵</span></div>
+          <div class="dropdown-item active"><span data-icon="copy"></span> Duplicate</div>
+          <div class="dropdown-item"><span data-icon="edit"></span> Rename<span class="kbd">R</span></div>
+          <div class="dropdown-item"><span data-icon="users"></span> Manage access</div>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-item danger"><span data-icon="trash"></span> Archive project</div>
+        </div>
+      </div>
+      <div class="cell" style="background:var(--surface);align-items:center;min-height:280px;">
+        <div class="dropdown">
+          <div class="dropdown-header">Filter — status</div>
+          <div class="dropdown-item active"><span class="status status-infield" style="height:18px;padding:0 6px;font-size:10px;">In field</span></div>
+          <div class="dropdown-item"><span class="status status-setup" style="height:18px;padding:0 6px;font-size:10px;">Setup</span></div>
+          <div class="dropdown-item"><span class="status status-draft" style="height:18px;padding:0 6px;font-size:10px;">Draft</span></div>
+          <div class="dropdown-item"><span class="status status-completed" style="height:18px;padding:0 6px;font-size:10px;">Completed</span></div>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-item" style="color:var(--text-2);">Clear filter</div>
+        </div>
+      </div>
+      <div class="cell" style="background:var(--surface);align-items:center;min-height:280px;">
+        <div class="dropdown" style="width:240px;">
+          <div class="dropdown-header">Workspace</div>
+          <div class="dropdown-item active">
+            <div class="avatar avatar-24" style="background:var(--accent);color:#fff;">DO</div>
+            <div style="display:flex;flex-direction:column;"><span style="font-weight:500;">DOS · Day One Strategy</span><span style="font-size:11px;color:var(--text-3);">6 members</span></div>
+          </div>
+          <div class="dropdown-item">
+            <div class="avatar avatar-24" style="background:#E6F1EC;color:var(--status-success);">NW</div>
+            <div style="display:flex;flex-direction:column;"><span>Northwind Research</span><span style="font-size:11px;color:var(--text-3);">Guest</span></div>
+          </div>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-item"><span data-icon="plus-circle"></span> New workspace</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Radii + spacing + shadow -->
+  <section class="block">
+    <div class="block-head">
+      <h2>Radii · spacing · elevation</h2><span class="id">09 · STRUCTURE</span>
+      <span class="desc">Never pill-shaped for containers — 6 to 16px.</span>
+    </div>
+    <div class="row-grid cols-3">
+      <div class="cell" style="min-height:180px;">
+        <span class="cap">Radius scale</span>
+        <div class="scale-row">
+          <div class="item"><div class="swatch-sq" style="border-radius:4px;"></div><span class="lbl">4 · xs</span></div>
+          <div class="item"><div class="swatch-sq" style="border-radius:6px;"></div><span class="lbl">6 · sm</span></div>
+          <div class="item"><div class="swatch-sq" style="border-radius:8px;"></div><span class="lbl">8 · md</span></div>
+          <div class="item"><div class="swatch-sq" style="border-radius:12px;"></div><span class="lbl">12 · lg</span></div>
+          <div class="item"><div class="swatch-sq" style="border-radius:16px;"></div><span class="lbl">16 · xl</span></div>
+        </div>
+      </div>
+      <div class="cell" style="min-height:180px;">
+        <span class="cap">Spacing scale (px)</span>
+        <div class="scale-row">
+          <div class="item"><div style="width:4px;height:40px;background:var(--accent);"></div><span class="lbl">4</span></div>
+          <div class="item"><div style="width:8px;height:40px;background:var(--accent);"></div><span class="lbl">8</span></div>
+          <div class="item"><div style="width:12px;height:40px;background:var(--accent);"></div><span class="lbl">12</span></div>
+          <div class="item"><div style="width:16px;height:40px;background:var(--accent);"></div><span class="lbl">16</span></div>
+          <div class="item"><div style="width:24px;height:40px;background:var(--accent);"></div><span class="lbl">24</span></div>
+          <div class="item"><div style="width:32px;height:40px;background:var(--accent);"></div><span class="lbl">32</span></div>
+        </div>
+      </div>
+      <div class="cell" style="min-height:180px;">
+        <span class="cap">Elevation</span>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;">
+          <div class="shadow-cell s1">01 · card</div>
+          <div class="shadow-cell s2">02 · raised</div>
+          <div class="shadow-cell s3">03 · popover</div>
+          <div class="shadow-cell s4">04 · modal</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

@@ -2,11 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Colors aligned with `dos-workspace/project/screens/tokens.css` (DOS Workspace handoff) */
+/* Day One Strategy + DOS workspace tokens */
 @layer base {
   :root {
+    --dos-navy: 251 59% 19%;
+    --dos-blue: 221 82% 50%;
+    --dos-teal: 174 87% 59%;
+    --dos-glow: 72 97% 73%;
+    --status-success: 152 47% 35%;
+    --status-warning: 32 75% 45%;
+
+    --workspace-surface: 60 9% 97%;
+    --workspace-panel: 40 20% 96%;
+
     --background: 60 9% 97%;
-    --foreground: 0 0% 10%;
+    --foreground: var(--dos-navy);
 
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
@@ -14,7 +24,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    --primary: 215 52% 25%;
+    --primary: var(--dos-navy);
     --primary-foreground: 0 0% 100%;
 
     --secondary: 218 22% 95%;
@@ -35,9 +45,9 @@
 
     --radius: 0.75rem;
 
-    --brand-from: 215 48% 34%;
-    --brand-via: 215 52% 25%;
-    --brand-to: 205 42% 32%;
+    --brand-from: var(--dos-blue);
+    --brand-via: var(--dos-navy);
+    --brand-to: 205 55% 38%;
 
     --glass-highlight: 0 0% 100%;
     --glass-surface: 0 0% 100%;
@@ -49,6 +59,9 @@
   }
 
   .dark {
+    --workspace-surface: 251 40% 8%;
+    --workspace-panel: 251 32% 11%;
+
     --background: 222 38% 7%;
     --foreground: 40 12% 95%;
 
@@ -58,8 +71,8 @@
     --popover: 222 32% 11%;
     --popover-foreground: 40 12% 95%;
 
-    --primary: 215 52% 62%;
-    --primary-foreground: 222 45% 8%;
+    --primary: 221 70% 62%;
+    --primary-foreground: 251 45% 10%;
 
     --secondary: 222 28% 16%;
     --secondary-foreground: 40 12% 92%;
@@ -86,6 +99,9 @@
     --glass-surface-alpha: 0.72;
     --glass-border: 222 22% 28%;
     --glass-border-alpha: 0.55;
+
+    --status-success: 152 42% 48%;
+    --status-warning: 32 70% 55%;
   }
 }
 

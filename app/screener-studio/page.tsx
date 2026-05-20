@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, FileText, Folder, LayoutDashboard } from "lucide-react";
 
+import { listProjects } from "@/app/actions/projects";
+import { NewScreenerStudioDialog } from "@/components/screeners/new-screener-studio-dialog";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
+import type { ProjectSummary } from "@/lib/projects/types";
 
 const SHORTCUTS = [
   {
@@ -20,13 +23,22 @@ const SHORTCUTS = [
   },
 ] as const;
 
-export default function ScreenerStudioHomePage() {
+export default async function ScreenerStudioHomePage() {
+  let projects: ProjectSummary[] = [];
+  try {
+    const result = await listProjects();
+    if (!("error" in result)) projects = result;
+  } catch {
+    projects = [];
+  }
+
   return (
     <div className="space-y-12">
       <PageHeader
         eyebrow="Screener Studio"
         title="Dashboard"
         description="Overview and shortcuts for your screening work. Quick links below — full dashboards are on the way."
+        actions={<NewScreenerStudioDialog projects={projects} />}
       />
 
       <section className="grid gap-4 sm:grid-cols-2">

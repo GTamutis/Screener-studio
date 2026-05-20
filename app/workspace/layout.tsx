@@ -1,4 +1,4 @@
-import { AppHeader } from "@/components/app-header";
+import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 import { getAuthenticatedShellProps } from "@/lib/auth/shell-props";
 
 export default async function WorkspaceLayout({
@@ -10,15 +10,13 @@ export default async function WorkspaceLayout({
     await getAuthenticatedShellProps();
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppHeader
-        brandLabel="Workspace"
-        brandHref="/workspace"
+    <div className="flex min-h-screen gap-0 bg-[hsl(var(--workspace-surface))]">
+      <WorkspaceSidebar
         displayName={displayName}
         isAdmin={isAdmin}
         pendingCount={pendingCount}
       />
-      {children}
+      <main className="min-w-0 flex-1 overflow-auto">{children}</main>
     </div>
   );
 }

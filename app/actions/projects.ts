@@ -112,6 +112,7 @@ export async function createProject(input: {
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/projects");
+    revalidatePath("/dashboard/projects");
     revalidatePath("/screener-studio/projects");
     revalidatePath("/invitely");
     return { ok: true, id: data.id as string };

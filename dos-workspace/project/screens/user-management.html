@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DOS Workspace — User Management</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { background: var(--surface); }
+.app { width: 1440px; min-height: 1024px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr; background: var(--surface); }
+
+/* expanded sidebar */
+.sb {
+  position: sticky; top: 0;
+  background: #fff;
+  border-right: 1px solid var(--border);
+  height: 100vh; min-height: 1024px;
+  padding: 18px 14px 18px;
+  display: flex; flex-direction: column;
+}
+.sb-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 6px 18px;
+}
+.sb-head img { width: 22px; height: 22px; }
+.sb-head .nm { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); }
+.sb-head .sub { font-size: 11px; color: var(--text-3); display: block; margin-top: -2px; }
+.sb-head .collapse {
+  margin-left: auto; color: var(--text-3); width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center; border-radius: 4px;
+}
+.sb-head .collapse:hover { background: var(--surface); color: var(--text); }
+
+.sb-section { padding: 16px 6px 6px; }
+.sb-section h6 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); font-weight: 500; margin: 0 0 8px; }
+
+.sb-list { display: flex; flex-direction: column; gap: 2px; }
+.sb-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 14px;
+  text-decoration: none;
+  position: relative;
+}
+.sb-link:hover { background: var(--surface); color: var(--text); }
+.sb-link.active { color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+.sb-link.active::before {
+  content:""; position: absolute; left:-14px; top:8px; bottom:8px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0;
+}
+.sb-link .count {
+  margin-left: auto; font-size: 11px; font-family: var(--mono);
+  color: var(--text-3); background: var(--surface); padding: 2px 6px; border-radius: 4px;
+}
+.sb-link.active .count { color: var(--accent); background: #fff; }
+.sb-divider { height: 1px; background: var(--border); margin: 14px 6px; }
+
+.sb-foot {
+  margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; padding: 14px 6px 0;
+}
+.sb-foot .me { display: flex; flex-direction: column; }
+.sb-foot .nm { font-size: 13px; font-weight: 500; }
+.sb-foot .ws { font-size: 11px; color: var(--text-3); }
+.sb-foot .chev { margin-left: auto; color: var(--text-3); }
+
+/* topbar */
+.main { display: flex; flex-direction: column; min-height: 1024px; }
+.topbar {
+  height: 56px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff;
+}
+.bread { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.bread .crumb { color: var(--text-2); }
+.bread .sep { color: var(--text-3); }
+.bread .here { color: var(--text); font-weight: 500; }
+.top-right { display: flex; align-items: center; gap: 14px; }
+.search-input {
+  width: 280px; height: 36px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--text-3); font-size: 13px; background: var(--surface);
+}
+.icon-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm); color: var(--text-2); cursor: pointer;
+}
+.icon-btn:hover { background: var(--surface); color: var(--text); }
+
+/* content */
+.content { padding: 32px 32px 56px; }
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-head h1 { font-size: 26px; font-weight: 600; margin: 6px 0 4px; letter-spacing: -0.015em; }
+.page-head .sub { color: var(--text-2); font-size: 14px; }
+.page-head .actions { display: flex; gap: 10px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+.kpi { background: #fff; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px 18px; }
+.kpi .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); font-weight: 500; }
+.kpi .val { font-size: 24px; font-weight: 600; margin-top: 4px; letter-spacing: -0.01em; }
+.kpi .row { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.kpi .row .pos { color: var(--status-success); }
+.kpi .row .warn { color: var(--status-warning); }
+
+.filters {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 12px;
+}
+.filters .search {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 8px; height: 36px;
+  padding: 0 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+  color: var(--text-3); font-size: 13px;
+}
+.filters .search input {
+  flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 13px;
+}
+.filter-pill {
+  height: 36px; padding: 0 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff;
+  display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px;
+}
+.filter-pill .k { color: var(--text-3); }
+.filter-pill .chev { color: var(--text-3); }
+
+.tbl-card { background: #fff; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+.tbl-card .table th:first-child, .tbl-card .table td:first-child { padding-left: 20px; }
+.tbl-card .table th:last-child, .tbl-card .table td:last-child { padding-right: 20px; text-align: right; }
+.tbl-card .table th:last-child, .tbl-card .table td:last-child { width: 60px; }
+
+.member { display: flex; align-items: center; gap: 12px; }
+.member .who { display: flex; flex-direction: column; }
+.member .nm { font-weight: 500; }
+.member .ml { font-size: 12px; color: var(--text-3); }
+.role-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  background: var(--surface); color: var(--text-2);
+}
+.role-tag.owner { background: var(--accent-soft); color: var(--accent); }
+.role-tag.editor { background: #E6F1EC; color: var(--status-success); }
+.role-tag.viewer { background: #EFEFEF; color: var(--text-2); }
+
+.proj-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-2);
+}
+.proj-count .n { color: var(--text); font-weight: 500; }
+
+.last-active { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.last-active.now { color: var(--status-success); font-weight: 500; }
+
+.you-tag { font-size: 10px; color: var(--text-3); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; margin-left: 6px; }
+
+/* roles explainer */
+.roles-card {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.roles-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px;
+  cursor: pointer;
+}
+.roles-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.roles-head .desc { color: var(--text-2); font-size: 13px; margin-top: 2px; }
+.roles-body {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+  border-top: 1px solid var(--border);
+}
+.role-col {
+  padding: 22px 24px;
+  border-right: 1px solid var(--border);
+}
+.role-col:last-child { border-right: 0; }
+.role-col .h {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.role-col h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.role-col .ic {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent);
+}
+.role-col ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.role-col li {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 13px; color: var(--text); line-height: 1.5;
+}
+.role-col li .check { color: var(--status-success); flex: none; margin-top: 2px; }
+.role-col li .deny { color: var(--text-3); flex: none; margin-top: 2px; }
+.role-col li.no { color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sb" data-screen-label="User Mgmt — Sidebar expanded">
+    <div class="sb-head">
+      <img src="../assets/dos-mark.png" alt="">
+      <div>
+        <span class="nm">DOS Workspace</span>
+        <span class="sub">Day One Strategy</span>
+      </div>
+      <button class="collapse" title="Collapse"><span data-icon="panel-left"></span></button>
+    </div>
+
+    <div class="sb-section">
+      <h6>Workspace</h6>
+      <div class="sb-list">
+        <a class="sb-link" href="dashboard.html"><span data-icon="home"></span> Home</a>
+        <a class="sb-link" href="#"><span data-icon="folder"></span> Projects <span class="count">12</span></a>
+        <a class="sb-link" href="#"><span data-icon="file-text"></span> Screeners</a>
+        <a class="sb-link" href="#"><span data-icon="bar-chart"></span> Quotas</a>
+        <a class="sb-link" href="#"><span data-icon="send"></span> Invitely</a>
+        <a class="sb-link" href="#"><span data-icon="layout"></span> Reports</a>
+      </div>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-section">
+      <h6>Admin</h6>
+      <div class="sb-list">
+        <a class="sb-link active" href="#"><span data-icon="users"></span> Team <span class="count">6</span></a>
+        <a class="sb-link" href="#"><span data-icon="shield-check"></span> Permissions</a>
+        <a class="sb-link" href="#"><span data-icon="globe"></span> Vendors</a>
+        <a class="sb-link" href="#"><span data-icon="settings"></span> Settings</a>
+      </div>
+    </div>
+
+    <div class="sb-foot">
+      <div class="avatar">GT</div>
+      <div class="me">
+        <span class="nm">Gedas Tamutis</span>
+        <span class="ws">Owner · DOS</span>
+      </div>
+      <span class="chev" data-icon="chevron-down"></span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="bread">
+        <span class="crumb">Admin</span>
+        <span class="sep">/</span>
+        <span class="here">Team</span>
+      </div>
+      <div class="top-right">
+        <div class="search-input">
+          <span data-icon="search"></span>
+          <span>Search projects, screeners, people…</span>
+        </div>
+        <button class="icon-btn"><span data-icon="bell"></span></button>
+        <div class="avatar">GT</div>
+      </div>
+    </header>
+
+    <section class="content" data-screen-label="User Mgmt — Content">
+      <div class="page-head">
+        <div>
+          <span class="label-eyebrow">Admin · Workspace settings</span>
+          <h1>Team members</h1>
+          <div class="sub">Manage who can access this workspace, their role, and the projects they belong to.</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost"><span data-icon="download"></span> Export</button>
+          <button class="btn btn-primary"><span data-icon="plus"></span> Invite member</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Total members</div><div class="val">6</div><div class="row">4 internal · 2 external</div></div>
+        <div class="kpi"><div class="lbl">Active</div><div class="val">4</div><div class="row"><span class="pos">↑ 1 vs last month</span></div></div>
+        <div class="kpi"><div class="lbl">Pending invites</div><div class="val">1</div><div class="row"><span class="warn">Awaiting response</span></div></div>
+        <div class="kpi"><div class="lbl">Seats remaining</div><div class="val">14 / 20</div><div class="row">Business plan</div></div>
+      </div>
+
+      <div class="filters">
+        <div class="search">
+          <span data-icon="search"></span>
+          <input placeholder="Search by name or email…">
+        </div>
+        <div class="filter-pill"><span class="k">Role:</span> All <span class="chev" data-icon="chevron-down"></span></div>
+        <div class="filter-pill"><span class="k">Status:</span> All <span class="chev" data-icon="chevron-down"></span></div>
+        <div class="filter-pill"><span class="k">Project:</span> Any <span class="chev" data-icon="chevron-down"></span></div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-ghost" style="height:36px;"><span data-icon="sliders"></span> Sort</button>
+        </div>
+      </div>
+
+      <div class="tbl-card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Member</th>
+              <th>Role</th>
+              <th>Projects</th>
+              <th>Status</th>
+              <th>Last active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar">GT</div>
+                  <div class="who">
+                    <div class="nm">Gedas Tamutis <span class="you-tag">You</span></div>
+                    <div class="ml">gedas@dos.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag owner">Owner</span></td>
+              <td><div class="proj-count"><span class="n">12</span> projects</div></td>
+              <td><span class="status status-active">Active</span></td>
+              <td><div class="last-active now">Just now</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar" style="background:#E6F1EC;color:var(--status-success);">SK</div>
+                  <div class="who">
+                    <div class="nm">Sarah Klein</div>
+                    <div class="ml">s.klein@dos.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag editor">Editor</span></td>
+              <td><div class="proj-count"><span class="n">8</span> projects</div></td>
+              <td><span class="status status-active">Active</span></td>
+              <td><div class="last-active">2 h ago</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar" style="background:#F0EAE0;color:var(--status-warning);">ML</div>
+                  <div class="who">
+                    <div class="nm">Marcus Lee</div>
+                    <div class="ml">m.lee@dos.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag editor">Editor</span></td>
+              <td><div class="proj-count"><span class="n">5</span> projects</div></td>
+              <td><span class="status status-active">Active</span></td>
+              <td><div class="last-active">Yesterday</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar" style="background:#EFEFEF;color:var(--text-2);">CA</div>
+                  <div class="who">
+                    <div class="nm">Acme client <span class="you-tag">External</span></div>
+                    <div class="ml">client@acme.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag viewer">Viewer</span></td>
+              <td><div class="proj-count"><span class="n">2</span> projects</div></td>
+              <td><span class="status status-active">Active</span></td>
+              <td><div class="last-active">3 d ago</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar" style="background:#F4E9E9;color:var(--status-error);">EP</div>
+                  <div class="who">
+                    <div class="nm">Emma Patel</div>
+                    <div class="ml">e.patel@dos.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag editor">Editor</span></td>
+              <td><div class="proj-count" style="color:var(--text-3);"><span class="n" style="color:var(--text-3);">0</span> projects</div></td>
+              <td><span class="status status-pending">Pending</span></td>
+              <td><div class="last-active">Invited 1 d ago</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member">
+                  <div class="avatar" style="background:#EFEFEF;color:var(--text-3);">TW</div>
+                  <div class="who">
+                    <div class="nm">Tom Walsh</div>
+                    <div class="ml">t.walsh@dos.com</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="role-tag viewer">Viewer</span></td>
+              <td><div class="proj-count"><span class="n">3</span> projects</div></td>
+              <td><span class="status status-inactive">Inactive</span></td>
+              <td><div class="last-active">14 d ago</div></td>
+              <td><button class="icon-btn"><span data-icon="more-vertical"></span></button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="roles-card">
+        <div class="roles-head">
+          <div>
+            <h3>About roles</h3>
+            <div class="desc">A quick reference for what each role can do across the workspace.</div>
+          </div>
+          <button class="icon-btn"><span data-icon="chevron-down"></span></button>
+        </div>
+        <div class="roles-body">
+          <div class="role-col">
+            <div class="h"><div class="ic"><span data-icon="star"></span></div><h4>Owner</h4></div>
+            <ul>
+              <li><span class="check" data-icon="check"></span> Full workspace control</li>
+              <li><span class="check" data-icon="check"></span> Manage billing &amp; seats</li>
+              <li><span class="check" data-icon="check"></span> Create &amp; archive projects</li>
+              <li><span class="check" data-icon="check"></span> Manage roles &amp; vendors</li>
+              <li><span class="check" data-icon="check"></span> Edit all screeners &amp; quotas</li>
+            </ul>
+          </div>
+          <div class="role-col">
+            <div class="h"><div class="ic"><span data-icon="edit"></span></div><h4>Editor</h4></div>
+            <ul>
+              <li><span class="check" data-icon="check"></span> Create projects</li>
+              <li><span class="check" data-icon="check"></span> Edit projects they're on</li>
+              <li><span class="check" data-icon="check"></span> Write screeners &amp; quotas</li>
+              <li class="no"><span class="deny" data-icon="x"></span> Manage billing</li>
+              <li class="no"><span class="deny" data-icon="x"></span> Change workspace settings</li>
+            </ul>
+          </div>
+          <div class="role-col">
+            <div class="h"><div class="ic"><span data-icon="eye"></span></div><h4>Viewer</h4></div>
+            <ul>
+              <li><span class="check" data-icon="check"></span> Read project summaries</li>
+              <li><span class="check" data-icon="check"></span> See field progress</li>
+              <li><span class="check" data-icon="check"></span> Comment on screeners</li>
+              <li class="no"><span class="deny" data-icon="x"></span> Edit anything</li>
+              <li class="no"><span class="deny" data-icon="x"></span> Invite members</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="icons.js"></script>
+</body>
+</html>

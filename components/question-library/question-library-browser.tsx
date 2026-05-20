@@ -16,34 +16,8 @@ import {
   QUESTION_TYPE_LABELS,
   type LibraryCategoryFilter,
 } from "@/lib/question-library/constants";
+import { filterLibraryQuestions } from "@/lib/question-library/filter";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
-
-function matchesKeyword(question: QuestionLibraryItem, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-
-  const haystack = [
-    question.displayId,
-    question.questionText,
-    question.category,
-    question.notes,
-    ...(question.tags ?? []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(q);
-}
-
-function matchesCategoryFilter(
-  question: QuestionLibraryItem,
-  filter: LibraryCategoryFilter,
-): boolean {
-  const def = LIBRARY_CATEGORY_FILTERS.find((f) => f.id === filter);
-  if (!def?.categories) return true;
-  return def.categories.includes(question.category);
-}
 
 function truncateText(text: string, max = 220): string {
   const normalized = text.replace(/\s+/g, " ").trim();
@@ -126,12 +100,10 @@ export function QuestionLibraryBrowser({
     useState<QuestionLibraryItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    return questions.filter(
-      (q) =>
-        matchesCategoryFilter(q, categoryFilter) && matchesKeyword(q, query),
-    );
-  }, [questions, categoryFilter, query]);
+  const filtered = useMemo(
+    () => filterLibraryQuestions(questions, query, categoryFilter),
+    [questions, categoryFilter, query],
+  );
 
   function openPreview(question: QuestionLibraryItem) {
     setPreviewQuestion(question);

@@ -4,10 +4,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Globe, Hash, UserRound } from "lucide-react";
 
 import { getProject } from "@/app/actions/projects";
-import type { ProjectSummary } from "@/lib/projects/types";
-
-import { DeleteProjectButton } from "@/components/projects/delete-project-button";
-import { EditProjectForm } from "@/components/projects/edit-project-form";
 import { ProjectScreenersSection } from "@/components/screeners/project-screeners-section";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
@@ -16,34 +12,24 @@ import { Badge } from "@/components/ui/badge";
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: { projectId: string };
 }): Promise<Metadata> {
   try {
-    const project = await getProject(params.id);
-    return { title: `${project.projectName} · Projects` };
+    const project = await getProject(params.projectId);
+    return { title: `${project.projectName} · Project` };
   } catch {
     return { title: "Project" };
   }
 }
 
-function editProjectFormKey(project: ProjectSummary) {
-  return [
-    project.id,
-    project.clientName,
-    project.projectNumber,
-    project.projectName,
-    project.markets.join("\u0001"),
-  ].join("\u0002");
-}
-
-export default async function ProjectDetailPage({
+export default async function DashboardProjectDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: { projectId: string };
 }) {
   let project;
   try {
-    project = await getProject(params.id);
+    project = await getProject(params.projectId);
   } catch {
     notFound();
   }
@@ -52,7 +38,7 @@ export default async function ProjectDetailPage({
     <div className="space-y-12">
       <div className="space-y-6">
         <Link
-          href="/projects"
+          href="/dashboard/projects"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -63,12 +49,9 @@ export default async function ProjectDetailPage({
           title={project.projectName}
           description={`Project ${project.projectNumber} · ${project.markets.length} market${project.markets.length === 1 ? "" : "s"}.`}
           actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="font-mono text-[11px]">
-                {project.projectNumber}
-              </Badge>
-              <DeleteProjectButton projectId={project.id} />
-            </div>
+            <Badge variant="outline" className="font-mono text-[11px]">
+              {project.projectNumber}
+            </Badge>
           }
         />
 
@@ -121,13 +104,6 @@ export default async function ProjectDetailPage({
           </GlassCard>
         </div>
       </div>
-
-      <section className="space-y-4">
-        <EditProjectForm
-          key={editProjectFormKey(project)}
-          project={project}
-        />
-      </section>
 
       <ProjectScreenersSection projectId={project.id} />
     </div>

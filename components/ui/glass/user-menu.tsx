@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 function initialsOf(displayName: string): string {
   const parts = displayName
@@ -32,11 +33,13 @@ export function UserMenu({
   isAdmin = false,
   pendingCount = 0,
   minimal = false,
+  iconOnly = false,
 }: {
   displayName: string;
   isAdmin?: boolean;
   pendingCount?: number;
   minimal?: boolean;
+  iconOnly?: boolean;
 }) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { signOut } = useClerk();
@@ -52,15 +55,24 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="group relative flex items-center gap-2 rounded-full glass-surface py-1 pl-1 pr-3 transition hover:border-foreground/20 hover:shadow-glass-sm"
+          className={cn(
+            "group relative transition",
+            iconOnly
+              ? "flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+              : "flex items-center gap-2 rounded-full glass-surface py-1 pl-1 pr-3 hover:border-foreground/20 hover:shadow-glass-sm",
+          )}
           aria-label="Account menu"
         >
-          <Avatar className="h-7 w-7">
-            <AvatarFallback>{initialsOf(displayName)}</AvatarFallback>
+          <Avatar className={iconOnly ? "h-7 w-7" : "h-7 w-7"}>
+            <AvatarFallback className={iconOnly ? "text-xs" : undefined}>
+              {initialsOf(displayName)}
+            </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-[140px] truncate text-sm font-medium text-foreground sm:inline">
-            {displayName}
-          </span>
+          {!iconOnly ? (
+            <span className="hidden max-w-[140px] truncate text-sm font-medium text-foreground sm:inline">
+              {displayName}
+            </span>
+          ) : null}
           {isAdmin && pendingCount > 0 ? (
             <Badge
               variant="destructive"
@@ -71,7 +83,11 @@ export function UserMenu({
           ) : null}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        align={iconOnly ? "start" : "end"}
+        side={iconOnly ? "right" : "bottom"}
+        className="w-56"
+      >
         <DropdownMenuLabel>Account</DropdownMenuLabel>
         <div className="px-2 pb-2 pt-1">
           <p className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -79,7 +95,7 @@ export function UserMenu({
             <span className="truncate">{displayName}</span>
           </p>
         </div>
-        {!minimal && isAdmin ? (
+        {(!minimal || iconOnly) && isAdmin ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -95,7 +111,7 @@ export function UserMenu({
             </DropdownMenuItem>
           </>
         ) : null}
-        {!minimal ? (
+        {!minimal && !iconOnly ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem

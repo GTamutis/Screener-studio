@@ -1,6 +1,8 @@
 import { AppHeader } from "@/components/app-header";
 import { getAuthenticatedShellProps } from "@/lib/auth/shell-props";
 
+const NAV_ITEMS = [{ href: "/dashboard/projects", label: "Projects" }] as const;
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -13,7 +15,9 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col">
       <AppHeader
         brandLabel="Dashboard"
-        brandHref="/workspace"
+        brandHref="/dashboard/projects"
+        sectionRootHref="/dashboard"
+        navItems={[...NAV_ITEMS]}
         displayName={displayName}
         isAdmin={isAdmin}
         pendingCount={pendingCount}
