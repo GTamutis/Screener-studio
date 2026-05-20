@@ -5,12 +5,18 @@ import {
   canAccessOwnedResource,
   ownerClerkIdFilter,
 } from "@/lib/auth/access";
-import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
+import {
+  getActiveAppUserForAction,
+  getAppUserByClerkId,
+} from "@/lib/auth/get-app-user";
 import { filterCountriesForSession, parseCountryList } from "@/lib/invitely/countries";
+import { parseBulkPasteAttendees } from "@/lib/invitely/parse-bulk-paste";
 import { hashSessionPassword, verifySessionPassword } from "@/lib/invitely/password";
 import type {
   InvitelyAttendee,
   InvitelyChangelogEntry,
+  InvitelyInvitePublicMeta,
+  InvitelySessionCreator,
   InvitelySessionSummary,
 } from "@/lib/invitely/types";
 import {
@@ -130,7 +136,7 @@ async function loadSessionForClient(sessionId: string) {
   const { data, error } = await supabase
     .from("invite_sessions")
     .select(
-      "id, password_hash, countries, project_name, client_name, created_at",
+      "id, clerk_user_id, password_hash, countries, project_name, client_name, created_at",
     )
     .eq("id", sessionId)
     .maybeSingle();
@@ -138,12 +144,26 @@ async function loadSessionForClient(sessionId: string) {
   return data as Pick<
     DbSessionRow,
     | "id"
+    | "clerk_user_id"
     | "password_hash"
     | "countries"
     | "project_name"
     | "client_name"
     | "created_at"
   > | null;
+}
+
+async function sessionCreatorForClerkId(
+  clerkUserId: string,
+): Promise<InvitelySessionCreator> {
+  const appUser = await getAppUserByClerkId(clerkUserId);
+  if (!appUser) {
+    return { name: "Day One Strategy", email: "" };
+  }
+  return {
+    name: appUser.displayName?.trim() || appUser.email,
+    email: appUser.email,
+  };
 }
 
 async function verifyClientPassword(sessionId: string, password: string) {
@@ -196,6 +216,111 @@ export async function createInviteSession(input: {
 
   revalidatePath("/invitely");
   return { ok: true as const, sessionId: data.id as string };
+}
+
+export async function updateInviteSession(input: {
+  sessionId: string;
+  clientName: string;
+  projectName: string;
+  countriesRaw: string;
+}) {
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) return { ok: false as const, error: appUser.error };
+  assertUuid(input.sessionId);
+
+  const clientName = normalizeWhitespace(input.clientName);
+  const projectName = normalizeWhitespace(input.projectName);
+  const countries = parseCountryList(input.countriesRaw);
+
+  if (!clientName) return { ok: false as const, error: "Client name is required." };
+  if (!projectName) return { ok: false as const, error: "Project name is required." };
+  if (countries.length === 0) {
+    return { ok: false as const, error: "Add at least one country." };
+  }
+
+  const supabase = createAdminClient();
+  const { data: existing, error: findError } = await supabase
+    .from("invite_sessions")
+    .select("id, clerk_user_id, countries")
+    .eq("id", input.sessionId)
+    .maybeSingle();
+
+  if (findError) return { ok: false as const, error: findError.message };
+  if (
+    !existing ||
+    !canAccessOwnedResource(
+      appUser,
+      (existing as { clerk_user_id: string }).clerk_user_id,
+    )
+  ) {
+    return { ok: false as const, error: "Session not found." };
+  }
+
+  const previousCountries = (existing as { countries: string[] }).countries ?? [];
+  const removed = new Set(
+    previousCountries.filter((c) => !countries.includes(c)),
+  );
+
+  const { error: updateError } = await supabase
+    .from("invite_sessions")
+    .update({
+      client_name: clientName,
+      project_name: projectName,
+      countries,
+    })
+    .eq("id", input.sessionId);
+
+  if (updateError) return { ok: false as const, error: updateError.message };
+
+  if (removed.size > 0) {
+    const { data: attendeeRows, error: attendeeError } = await supabase
+      .from("invite_attendees")
+      .select("id, selected_countries")
+      .eq("session_id", input.sessionId);
+
+    if (attendeeError) return { ok: false as const, error: attendeeError.message };
+
+    for (const row of attendeeRows ?? []) {
+      const selected = (row as { selected_countries: string[] }).selected_countries ?? [];
+      const nextSelected = selected.filter((c) => !removed.has(c));
+      if (nextSelected.length === selected.length) continue;
+
+      const { error: rowError } = await supabase
+        .from("invite_attendees")
+        .update({ selected_countries: nextSelected })
+        .eq("id", (row as { id: string }).id);
+
+      if (rowError) return { ok: false as const, error: rowError.message };
+    }
+  }
+
+  revalidatePath("/invitely");
+  revalidatePath(`/invitely/sessions/${input.sessionId}`);
+  return { ok: true as const };
+}
+
+export async function getInviteSessionPublicMeta(
+  sessionId: string,
+): Promise<InvitelyInvitePublicMeta | { error: string }> {
+  assertUuid(sessionId);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("invite_sessions")
+    .select("client_name, project_name, clerk_user_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Session not found." };
+
+  const row = data as Pick<DbSessionRow, "client_name" | "project_name" | "clerk_user_id">;
+  const createdBy = await sessionCreatorForClerkId(row.clerk_user_id);
+
+  return {
+    projectName: row.project_name,
+    clientName: row.client_name,
+    createdBy,
+  };
 }
 
 export async function listInviteSessions(): Promise<
@@ -342,6 +467,8 @@ export async function unlockInviteSession(input: {
 
   if (error) return { ok: false as const, error: error.message };
 
+  const createdBy = await sessionCreatorForClerkId(verified.session.clerk_user_id);
+
   return {
     ok: true as const,
     session: {
@@ -349,6 +476,7 @@ export async function unlockInviteSession(input: {
       projectName: verified.session.project_name,
       clientName: verified.session.client_name,
       countries: verified.session.countries ?? [],
+      createdBy,
     },
     attendees: (attendeeRows ?? []).map((r) => mapAttendee(r as DbAttendeeRow)),
   };
@@ -572,24 +700,13 @@ export async function clientBulkPasteAttendees(input: {
     };
   }
 
-  const lines = input.linesRaw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const parsed: { name: string; email: string }[] = [];
-  for (const line of lines) {
-    const idx = line.indexOf(",");
-    if (idx === -1) continue;
-    const name = normalizeWhitespace(line.slice(0, idx));
-    const email = normalizeWhitespace(line.slice(idx + 1));
-    if (!name || name.length > NAME_MAX) continue;
-    if (!email || email.length > EMAIL_MAX || !isValidEmail(email)) continue;
-    parsed.push({ name, email });
-  }
+  const parsed = parseBulkPasteAttendees(input.linesRaw);
 
   if (parsed.length === 0) {
-    return { ok: false as const, error: "No valid lines found. Use: Name, email" };
+    return {
+      ok: false as const,
+      error: "No valid email addresses found in the pasted text.",
+    };
   }
 
   const supabase = createAdminClient();

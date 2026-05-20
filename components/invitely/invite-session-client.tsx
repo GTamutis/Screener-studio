@@ -4,10 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ClipboardPaste,
-  Globe,
   Lock,
   Plus,
-  Sparkles,
   Trash2,
   Users,
 } from "lucide-react";
@@ -19,9 +17,14 @@ import {
   clientUpdateAttendee,
   unlockInviteSession,
 } from "@/app/actions/invitely";
-import type { InvitelyAttendee } from "@/lib/invitely/types";
+import type {
+  InvitelyAttendee,
+  InvitelyInvitePublicMeta,
+  InvitelySessionCreator,
+} from "@/lib/invitely/types";
 import { ACTOR_NAME_MAX } from "@/lib/invitely/validation";
 
+import { DayOneLogo } from "@/components/brand/day-one-logo";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,11 +34,43 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+const MATRIX_CHECKBOX_CLASS =
+  "border-foreground/30 bg-muted/80 shadow-sm ring-1 ring-foreground/10 hover:border-primary/50 hover:bg-muted data-[state=checked]:border-transparent data-[state=checked]:bg-brand-gradient data-[state=checked]:text-white data-[state=checked]:shadow-md disabled:bg-muted/40 disabled:opacity-50";
+
 function invitePath(sessionId: string) {
   return `/invite/${sessionId}`;
 }
 
-export function InviteSessionClient({ sessionId }: { sessionId: string }) {
+function InviteBrandLogo({ className }: { className?: string }) {
+  return (
+    <DayOneLogo
+      className={cn("h-11 w-auto sm:h-12", className)}
+      decorative={false}
+    />
+  );
+}
+
+function LinkCreatorBlock({ createdBy }: { createdBy: InvitelySessionCreator }) {
+  return (
+    <div className="rounded-xl border border-border/50 bg-background/50 px-3.5 py-2.5 text-right">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        Link set up by
+      </p>
+      <p className="mt-0.5 text-sm font-semibold text-foreground">{createdBy.name}</p>
+      {createdBy.email ? (
+        <p className="truncate text-xs text-muted-foreground">{createdBy.email}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function InviteSessionClient({
+  sessionId,
+  publicMeta,
+}: {
+  sessionId: string;
+  publicMeta: InvitelyInvitePublicMeta;
+}) {
   const [phase, setPhase] = useState<"locked" | "open">("locked");
   const [actorName, setActorName] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +80,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
     projectName: string;
     clientName: string;
     countries: string[];
+    createdBy: InvitelySessionCreator;
   } | null>(null);
   const [attendees, setAttendees] = useState<InvitelyAttendee[]>([]);
   const [bulkText, setBulkText] = useState("");
@@ -159,6 +195,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
         projectName: res.session.projectName,
         clientName: res.session.clientName,
         countries: res.session.countries,
+        createdBy: res.session.createdBy,
       });
       setAttendees(res.attendees);
       setPhase("open");
@@ -218,10 +255,15 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
 
   const countryCols = meta?.countries ?? [];
 
+  const createdBy = meta?.createdBy ?? publicMeta.createdBy;
+
   if (phase === "locked") {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6">
+      <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
         <div className="w-full max-w-md">
+          <div className="mb-4 flex justify-end">
+            <LinkCreatorBlock createdBy={createdBy} />
+          </div>
           <div className="mb-6 flex flex-col items-center gap-3 text-center animate-fade-in-up">
             <div className="relative">
               <div className="absolute inset-0 -z-10 rounded-full bg-brand-gradient opacity-40 blur-2xl" />
@@ -242,6 +284,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
           </div>
 
           <GlassCard className="p-7 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
+            <InviteBrandLogo className="mb-6" />
             <form className="space-y-5" onSubmit={(e) => void handleUnlock(e)}>
               <div className="space-y-1.5">
                 <Label htmlFor="actorName">Your name</Label>
@@ -287,12 +330,13 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:pb-14">
       <div className="space-y-8">
         <GlassCard className="overflow-hidden p-0">
           <div className="relative border-b border-border/40 bg-brand-gradient-soft px-6 py-6 sm:px-8 sm:py-7">
+            <InviteBrandLogo className="mb-5 sm:mb-6" />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-2">
+              <div className="space-y-2 sm:max-w-xl">
                 <Badge variant="gradient">{meta.clientName}</Badge>
                 <h1 className="text-balance text-2xl font-bold tracking-tight sm:text-3xl">
                   <span className="text-gradient">{meta.projectName}</span>
@@ -302,15 +346,9 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                   automatically.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="flex items-center gap-2 rounded-xl glass-surface px-3 py-1.5 text-xs">
-                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="font-semibold">
-                    {meta.countries.length}
-                  </span>
-                  <span className="text-muted-foreground">countries</span>
-                </div>
-                <div className="flex items-center gap-2 rounded-xl glass-surface px-3 py-1.5 text-xs">
+              <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                <LinkCreatorBlock createdBy={createdBy} />
+                <div className="flex items-center gap-2 self-end rounded-xl glass-surface px-3 py-1.5 text-xs">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="font-semibold">{attendees.length}</span>
                   <span className="text-muted-foreground">attendees</span>
@@ -331,16 +369,14 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                   Bulk paste
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  One per line:{" "}
-                  <span className="font-mono text-[11px] text-foreground">
-                    Jane Doe, jane@acme.com
-                  </span>
+                  Paste any list or table — we extract email addresses. Names are
+                  optional when we can detect them.
                 </p>
               </div>
             </div>
             <Button onClick={() => void handleBulkPaste()}>
-              <Sparkles className="h-4 w-4" />
-              Parse into rows
+              <ClipboardPaste className="h-4 w-4" />
+              Bulk paste
             </Button>
           </div>
           <Textarea
@@ -348,7 +384,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
             onChange={(e) => setBulkText(e.target.value)}
             rows={4}
             className="mt-4 font-mono text-[13px]"
-            placeholder="Jane Doe, jane@acme.com&#10;John Smith, john@beta.io"
+            placeholder="Paste from Excel, Outlook, or a plain list — emails required"
           />
         </GlassCard>
 
@@ -377,7 +413,10 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
               <thead>
                 <tr className="border-b border-border/40 bg-background/30 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
                   <th className="sticky left-0 z-10 min-w-[12rem] bg-background/30 px-3 py-3 backdrop-blur">
-                    Name
+                    <span className="block">Name</span>
+                    <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-muted-foreground/80">
+                      optional
+                    </span>
                   </th>
                   <th className="min-w-[14rem] px-3 py-3">Email</th>
                   <th className="min-w-[7rem] px-2 py-3 text-center">
@@ -441,6 +480,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                     <td className="px-2 py-2 align-middle">
                       <div className="flex justify-center">
                         <Checkbox
+                          className={MATRIX_CHECKBOX_CLASS}
                           checked={row.inviteAll}
                           onCheckedChange={async (checked) => {
                             const v = checked === true;
@@ -470,6 +510,7 @@ export function InviteSessionClient({ sessionId }: { sessionId: string }) {
                         <td key={c} className="px-2 py-2 align-middle">
                           <div className="flex justify-center">
                             <Checkbox
+                              className={MATRIX_CHECKBOX_CLASS}
                               disabled={disabled}
                               checked={checked}
                               onCheckedChange={async (next) => {

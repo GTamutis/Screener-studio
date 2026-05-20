@@ -25,3 +25,14 @@ export type InvitelyChangelogEntry = {
   selectedCountries: string[] | null;
   createdAt: string;
 };
+
+export type InvitelySessionCreator = {
+  name: string;
+  email: string;
+};
+
+export type InvitelyInvitePublicMeta = {
+  projectName: string;
+  clientName: string;
+  createdBy: InvitelySessionCreator;
+};

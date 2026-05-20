@@ -12,14 +12,17 @@ import {
   Globe,
   Loader2,
   Mail,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 
 import {
   createInviteSession,
   deleteInviteSession,
+  updateInviteSession,
 } from "@/app/actions/invitely";
 import type { InvitelySessionSummary } from "@/lib/invitely/types";
 import type { ProjectSummary } from "@/lib/projects/types";
@@ -40,6 +43,17 @@ function inviteUrl(sessionId: string) {
 function SessionCard({ session }: { session: InvitelySessionSummary }) {
   const router = useRouter();
   const [pendingDelete, startDelete] = useTransition();
+  const [pendingSave, startSave] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [clientName, setClientName] = useState(session.clientName);
+  const [projectName, setProjectName] = useState(session.projectName);
+  const [countriesRaw, setCountriesRaw] = useState(session.countries.join(", "));
+
+  const resetEditFields = () => {
+    setClientName(session.clientName);
+    setProjectName(session.projectName);
+    setCountriesRaw(session.countries.join(", "));
+  };
 
   const handleCopy = async () => {
     try {
@@ -48,6 +62,24 @@ function SessionCard({ session }: { session: InvitelySessionSummary }) {
     } catch {
       toast.error("Could not copy link");
     }
+  };
+
+  const handleSaveEdit = () => {
+    startSave(async () => {
+      const res = await updateInviteSession({
+        sessionId: session.id,
+        clientName,
+        projectName,
+        countriesRaw,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Session updated");
+      setEditing(false);
+      router.refresh();
+    });
   };
 
   const handleDelete = () => {
@@ -68,50 +100,122 @@ function SessionCard({ session }: { session: InvitelySessionSummary }) {
 
   return (
     <GlassCard interactive className="flex flex-col p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold tracking-tight text-foreground">
-            {session.projectName}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Client:{" "}
-            <span className="font-medium text-foreground">
-              {session.clientName}
-            </span>
-          </p>
+      {editing ? (
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-client-${session.id}`}>Client name</Label>
+            <Input
+              id={`edit-client-${session.id}`}
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-project-${session.id}`}>Project / study name</Label>
+            <Input
+              id={`edit-project-${session.id}`}
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`edit-countries-${session.id}`}>Countries</Label>
+            <Input
+              id={`edit-countries-${session.id}`}
+              value={countriesRaw}
+              onChange={(e) => setCountriesRaw(e.target.value)}
+              placeholder="UK, US, Germany"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button
+              size="sm"
+              disabled={pendingSave}
+              onClick={handleSaveEdit}
+            >
+              {pendingSave ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="glass"
+              disabled={pendingSave}
+              onClick={() => {
+                resetEditFields();
+                setEditing(false);
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </div>
         </div>
-        <Badge variant="gradient" className="shrink-0">
-          <Globe className="mr-1 h-3 w-3" />
-          {session.countries.length}
-        </Badge>
-      </div>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold tracking-tight text-foreground">
+                {session.projectName}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Client:{" "}
+                <span className="font-medium text-foreground">
+                  {session.clientName}
+                </span>
+              </p>
+            </div>
+            <Badge variant="gradient" className="shrink-0">
+              <Globe className="mr-1 h-3 w-3" />
+              {session.countries.length}
+            </Badge>
+          </div>
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {(session.countries ?? []).map((c) => (
-          <span
-            key={c}
-            className="rounded-full bg-brand-gradient-soft px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 ring-1 ring-inset ring-primary/15"
-          >
-            {c}
-          </span>
-        ))}
-      </div>
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {(session.countries ?? []).map((c) => (
+              <span
+                key={c}
+                className="rounded-full bg-brand-gradient-soft px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 ring-1 ring-inset ring-primary/15"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => void handleCopy()}>
-          <Copy className="h-3.5 w-3.5" />
-          Copy link
-        </Button>
-        <Button asChild size="sm" variant="glass">
-          <Link href={`/invitely/sessions/${session.id}`}>
-            <Eye className="h-3.5 w-3.5" />
-            View
-          </Link>
-        </Button>
+        {!editing ? (
+          <>
+            <Button size="sm" onClick={() => void handleCopy()}>
+              <Copy className="h-3.5 w-3.5" />
+              Copy link
+            </Button>
+            <Button asChild size="sm" variant="glass">
+              <Link href={`/invitely/sessions/${session.id}`}>
+                <Eye className="h-3.5 w-3.5" />
+                View
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="glass"
+              onClick={() => {
+                resetEditFields();
+                setEditing(true);
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          </>
+        ) : null}
         <Button
           size="sm"
           variant="ghost"
-          disabled={pendingDelete}
+          disabled={pendingDelete || editing}
           onClick={handleDelete}
           className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
           aria-label="Delete session"
