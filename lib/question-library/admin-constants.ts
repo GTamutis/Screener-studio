@@ -7,6 +7,7 @@ export const ADMIN_FORM_QUESTION_TYPES = [
   "numeric",
   "scale",
   "statement",
+  "grid",
 ] as const;
 
 export type AdminFormQuestionType =
@@ -43,7 +44,12 @@ export type AdminQuestionStatus =
   (typeof ADMIN_STATUS_OPTIONS)[number]["value"];
 
 export function questionTypeShowsAnswerOptions(type: string): boolean {
-  return type === "single" || type === "multi" || type === "scale";
+  return (
+    type === "single" ||
+    type === "multi" ||
+    type === "scale" ||
+    type === "grid"
+  );
 }
 
 export function formCategoryToDb(
