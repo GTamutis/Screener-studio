@@ -10,7 +10,7 @@ import {
   getAppUserByClerkId,
 } from "@/lib/auth/get-app-user";
 import { filterCountriesForSession, parseCountryList } from "@/lib/invitely/countries";
-import { parseBulkPasteAttendees } from "@/lib/invitely/parse-bulk-paste";
+import { parseBulkPasteEmails } from "@/lib/invitely/parse-bulk-paste";
 import { hashSessionPassword, verifySessionPassword } from "@/lib/invitely/password";
 import type {
   InvitelyAttendee,
@@ -700,9 +700,9 @@ export async function clientBulkPasteAttendees(input: {
     };
   }
 
-  const parsed = parseBulkPasteAttendees(input.linesRaw);
+  const emails = parseBulkPasteEmails(input.linesRaw);
 
-  if (parsed.length === 0) {
+  if (emails.length === 0) {
     return {
       ok: false as const,
       error: "No valid email addresses found in the pasted text.",
@@ -712,13 +712,13 @@ export async function clientBulkPasteAttendees(input: {
   const supabase = createAdminClient();
   const insertedRows: InvitelyAttendee[] = [];
 
-  for (const row of parsed) {
+  for (const email of emails) {
     const { data: inserted, error } = await supabase
       .from("invite_attendees")
       .insert({
         session_id: input.sessionId,
-        name: row.name,
-        email: row.email,
+        name: "",
+        email,
         invite_all: false,
         selected_countries: [],
       })

@@ -369,8 +369,8 @@ export function InviteSessionClient({
                   Bulk paste
                 </h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Paste any list or table — we extract email addresses. Names are
-                  optional when we can detect them.
+                  Paste any list or table — we add email addresses only. Add names
+                  in the matrix below if you need them.
                 </p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export function InviteSessionClient({
             onChange={(e) => setBulkText(e.target.value)}
             rows={4}
             className="mt-4 font-mono text-[13px]"
-            placeholder="Paste from Excel, Outlook, or a plain list — emails required"
+            placeholder="Paste from Excel, Outlook, or any list — emails only"
           />
         </GlassCard>
 
@@ -395,7 +395,8 @@ export function InviteSessionClient({
                 Attendee matrix
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Toggle invite-all or pick specific countries for each person.
+                Email is required; name is optional. Toggle invite-all or pick
+                countries per person.
               </p>
             </div>
             <Button
@@ -456,7 +457,8 @@ export function InviteSessionClient({
                         }}
                         onBlur={() => void flushSave(row.id)}
                         maxLength={120}
-                        className="h-9"
+                        placeholder="Optional"
+                        className="h-9 placeholder:text-muted-foreground/50"
                       />
                     </td>
                     <td className="px-3 py-2 align-middle">
