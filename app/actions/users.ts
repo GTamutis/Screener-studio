@@ -109,7 +109,7 @@ async function syncLibraryProfileForEmail(
   const { data } = await supabase
     .from("app_users")
     .select("clerk_user_id, role, display_name")
-    .ilike("email", normalizeEmail(email))
+    .eq("email", normalizeEmail(email))
     .maybeSingle();
 
   if (!data?.clerk_user_id) return;
@@ -138,7 +138,7 @@ export async function inviteAppUser(input: {
   const { data: existing } = await supabase
     .from("app_users")
     .select("id, status")
-    .ilike("email", email)
+    .eq("email", email)
     .maybeSingle();
 
   if (existing?.status === "disabled") {
