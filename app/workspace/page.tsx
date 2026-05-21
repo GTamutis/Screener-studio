@@ -12,6 +12,7 @@ import {
 } from "@/lib/format-relative-time";
 import { formatUserDisplayName } from "@/lib/format-display-name";
 import type { ProjectSummary } from "@/lib/projects/types";
+import { getIndustryNews } from "@/lib/workspace/industry-news";
 import { computeWorkspaceMetrics } from "@/lib/workspace/metrics";
 
 export default async function WorkspacePage() {
@@ -32,6 +33,13 @@ export default async function WorkspacePage() {
 
   const metrics = computeWorkspaceMetrics(projects);
   const attentionCount = metrics.setup;
+
+  const industryNews = await getIndustryNews();
+  const projectClientNames = Array.from(
+    new Set(
+      projects.map((p) => p.clientName.trim()).filter((name) => name.length >= 3),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
 
   return (
     <div className="px-6 py-8 lg:px-8">
@@ -60,10 +68,15 @@ export default async function WorkspacePage() {
 
           <WorkspaceProjectsTable projects={projects} />
 
-          <WorkspaceNewsFeed />
+          <WorkspaceNewsFeed
+            items={industryNews.items}
+            failedSources={industryNews.failedSources}
+            sourceCounts={industryNews.sourceCounts}
+            projectClientNames={projectClientNames}
+          />
         </div>
 
-        <WorkspaceRightPanel className="xl:sticky xl:top-8" />
+        <WorkspaceRightPanel className="xl:sticky xl:top-8 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto" />
       </div>
     </div>
   );

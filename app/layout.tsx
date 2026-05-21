@@ -63,7 +63,10 @@ export default function RootLayout({
           </Suspense>
           <ClerkProvider>
             <TooltipProvider delayDuration={150}>
-              <div className="relative flex min-h-screen flex-col">
+              <div
+                data-app-shell
+                className="relative flex min-h-screen flex-col"
+              >
                 {children}
               </div>
             </TooltipProvider>

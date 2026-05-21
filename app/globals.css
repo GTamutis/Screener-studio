@@ -230,6 +230,22 @@
   }
 }
 
+/* Workspace: single scroll region in <main>, not the document */
+html:has([data-workspace-shell]),
+body:has([data-workspace-shell]) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has([data-workspace-shell]) [data-app-shell] {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

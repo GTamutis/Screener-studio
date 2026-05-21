@@ -10,13 +10,18 @@ export default async function WorkspaceLayout({
     await getAuthenticatedShellProps();
 
   return (
-    <div className="flex min-h-screen gap-0 bg-[hsl(var(--workspace-surface))]">
+    <div
+      data-workspace-shell
+      className="flex h-dvh max-h-dvh overflow-hidden bg-[hsl(var(--workspace-surface))]"
+    >
       <WorkspaceSidebar
         displayName={displayName}
         isAdmin={isAdmin}
         pendingCount={pendingCount}
       />
-      <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
+        {children}
+      </main>
     </div>
   );
 }

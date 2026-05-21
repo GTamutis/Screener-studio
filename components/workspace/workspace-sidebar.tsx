@@ -131,7 +131,7 @@ export function WorkspaceSidebar({
   pendingCount?: number;
 }) {
   return (
-    <aside className="sticky top-0 z-40 flex h-screen w-14 shrink-0 flex-col items-center border-r border-border bg-card py-4">
+    <aside className="z-40 flex h-full w-14 shrink-0 flex-col items-center border-r border-border bg-card py-4">
       <Link
         href="/workspace"
         className="mb-6 flex h-8 w-8 items-center justify-center rounded-md outline-none transition hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"
