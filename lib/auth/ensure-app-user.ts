@@ -95,7 +95,7 @@ export async function ensureAppUserForClerkId(
     .select(
       "id, clerk_user_id, email, display_name, role, status, created_at, approved_at",
     )
-    .ilike("email", normalizedEmail)
+    .eq("email", normalizedEmail)
     .maybeSingle();
 
   if (byEmail) {
