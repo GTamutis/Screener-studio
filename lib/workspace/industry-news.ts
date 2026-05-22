@@ -32,6 +32,19 @@ const parser = new Parser({
   },
 });
 
+function normalizeHttpUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function parseFeedConfigsFromEnv(): FeedConfig[] {
   const raw = process.env.INDUSTRY_NEWS_FEED_URLS?.trim();
   if (!raw) return DEFAULT_FEEDS;
@@ -45,11 +58,21 @@ function parseFeedConfigsFromEnv(): FeedConfig[] {
     if (pipe > 0) {
       const url = entry.slice(0, pipe).trim();
       const source = entry.slice(pipe + 1).trim();
-      if (url && source) configs.push({ url, source });
+      const safeUrl = normalizeHttpUrl(url);
+      if (safeUrl && source) {
+        configs.push({ url: safeUrl, source });
+      } else {
+        console.warn("[industry-news] Skipping invalid feed URL:", url);
+      }
       continue;
     }
 
-    const url = entry;
+    const url = normalizeHttpUrl(entry);
+    if (!url) {
+      console.warn("[industry-news] Skipping invalid feed URL:", entry);
+      continue;
+    }
+
     try {
       const host = new URL(url).hostname.replace(/^www\./, "");
       const source =
@@ -209,7 +232,8 @@ async function parseFeed(config: FeedConfig): Promise<IndustryNewsItem[]> {
 
   for (const entry of feed.items ?? []) {
     const title = normalizeRssText(entry.title);
-    const link = normalizeRssText(entry.link) ?? normalizeRssText(entry.guid);
+    const rawLink = normalizeRssText(entry.link) ?? normalizeRssText(entry.guid);
+    const link = rawLink ? normalizeHttpUrl(rawLink) : null;
     if (!title || !link) continue;
 
     const publishedAt = normalizePublishedAt(entry.isoDate, entry.pubDate);
