@@ -37,6 +37,12 @@ import { cn } from "@/lib/utils";
 const MATRIX_CHECKBOX_CLASS =
   "border-foreground/30 bg-muted/80 shadow-sm ring-1 ring-foreground/10 hover:border-primary/50 hover:bg-muted data-[state=checked]:border-transparent data-[state=checked]:bg-brand-gradient data-[state=checked]:text-white data-[state=checked]:shadow-md disabled:bg-muted/40 disabled:opacity-50";
 
+type AttendeeSaveState = {
+  saving: boolean;
+  queued: boolean;
+  wantsToast: boolean;
+};
+
 function invitePath(sessionId: string) {
   return `/invite/${sessionId}`;
 }
@@ -90,44 +96,120 @@ export function InviteSessionClient({
   attendeesRef.current = attendees;
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const saveStates = useRef<Record<string, AttendeeSaveState>>({});
+  const queuedSaveRows = useRef<Record<string, InvitelyAttendee>>({});
 
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
-  const flushSave = useCallback(
-    async (attendeeId: string) => {
+  const markQueuedSave = useCallback((row: InvitelyAttendee) => {
+    const state = saveStates.current[row.id];
+    if (!state?.saving) return;
+
+    queuedSaveRows.current[row.id] = row;
+    state.queued = true;
+    state.wantsToast = true;
+  }, []);
+
+  const saveAttendee = useCallback(
+    async (
+      attendeeId: string,
+      opts?: { row?: InvitelyAttendee; silentToast?: boolean },
+    ): Promise<boolean> => {
       const pending = saveTimers.current[attendeeId];
       if (pending) {
         clearTimeout(pending);
         delete saveTimers.current[attendeeId];
       }
 
-      const row = attendeesRef.current.find((a) => a.id === attendeeId);
-      if (!row) return;
-
-      const res = await clientUpdateAttendee({
-        sessionId,
-        password,
-        actorName,
-        attendeeId: row.id,
-        name: row.name,
-        email: row.email,
-        inviteAll: row.inviteAll,
-        selectedCountries: row.selectedCountries,
-      });
-
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
+      if (opts?.row) {
+        queuedSaveRows.current[attendeeId] = opts.row;
       }
 
-      setAttendees((prev) =>
-        prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
-      );
-      toast.success("Saved");
+      const state =
+        saveStates.current[attendeeId] ??
+        (saveStates.current[attendeeId] = {
+          saving: false,
+          queued: false,
+          wantsToast: false,
+        });
+
+      state.wantsToast = state.wantsToast || !opts?.silentToast;
+
+      if (state.saving) {
+        const latest =
+          opts?.row ?? attendeesRef.current.find((a) => a.id === attendeeId);
+        if (latest) {
+          queuedSaveRows.current[attendeeId] = latest;
+          state.queued = true;
+        }
+        return true;
+      }
+
+      state.saving = true;
+
+      try {
+        do {
+          state.queued = false;
+
+          const queuedTimer = saveTimers.current[attendeeId];
+          if (queuedTimer) {
+            clearTimeout(queuedTimer);
+            delete saveTimers.current[attendeeId];
+          }
+
+          const row =
+            queuedSaveRows.current[attendeeId] ??
+            attendeesRef.current.find((a) => a.id === attendeeId);
+          delete queuedSaveRows.current[attendeeId];
+
+          if (!row) return true;
+
+          const showToast = state.wantsToast;
+          state.wantsToast = false;
+
+          const res = await clientUpdateAttendee({
+            sessionId,
+            password,
+            actorName,
+            attendeeId: row.id,
+            name: row.name,
+            email: row.email,
+            inviteAll: row.inviteAll,
+            selectedCountries: row.selectedCountries,
+          });
+
+          if (!res.ok) {
+            toast.error(res.error);
+            return false;
+          }
+
+          if (state.queued) {
+            state.wantsToast = state.wantsToast || showToast;
+            continue;
+          }
+
+          setAttendees((prev) =>
+            prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
+          );
+          if (showToast) toast.success("Saved");
+        } while (state.queued);
+
+        return true;
+      } finally {
+        state.saving = false;
+        if (!state.queued && !queuedSaveRows.current[attendeeId]) {
+          delete saveStates.current[attendeeId];
+        }
+      }
     },
     [actorName, password, sessionId],
+  );
+
+  const flushSave = useCallback(
+    (attendeeId: string) => saveAttendee(attendeeId),
+    [saveAttendee],
   );
 
   const scheduleSave = useCallback(
@@ -146,29 +228,9 @@ export function InviteSessionClient({
       nextRow: InvitelyAttendee,
       opts?: { silentToast?: boolean },
     ): Promise<boolean> => {
-      const res = await clientUpdateAttendee({
-        sessionId,
-        password,
-        actorName,
-        attendeeId: nextRow.id,
-        name: nextRow.name,
-        email: nextRow.email,
-        inviteAll: nextRow.inviteAll,
-        selectedCountries: nextRow.selectedCountries,
-      });
-
-      if (!res.ok) {
-        toast.error(res.error);
-        return false;
-      }
-
-      setAttendees((prev) =>
-        prev.map((a) => (a.id === res.attendee.id ? res.attendee : a)),
-      );
-      if (!opts?.silentToast) toast.success("Saved");
-      return true;
+      return saveAttendee(nextRow.id, { row: nextRow, ...opts });
     },
-    [actorName, password, sessionId],
+    [saveAttendee],
   );
 
   const handleUnlock = async (e: React.FormEvent) => {
@@ -448,11 +510,13 @@ export function InviteSessionClient({
                         value={row.name}
                         onChange={(e) => {
                           const v = e.target.value;
+                          const nextRow = { ...row, name: v };
                           setAttendees((prev) =>
                             prev.map((a) =>
-                              a.id === row.id ? { ...a, name: v } : a,
+                              a.id === row.id ? nextRow : a,
                             ),
                           );
+                          markQueuedSave(nextRow);
                           scheduleSave(row.id);
                         }}
                         onBlur={() => void flushSave(row.id)}
@@ -467,11 +531,13 @@ export function InviteSessionClient({
                         value={row.email}
                         onChange={(e) => {
                           const v = e.target.value;
+                          const nextRow = { ...row, email: v };
                           setAttendees((prev) =>
                             prev.map((a) =>
-                              a.id === row.id ? { ...a, email: v } : a,
+                              a.id === row.id ? nextRow : a,
                             ),
                           );
+                          markQueuedSave(nextRow);
                           scheduleSave(row.id);
                         }}
                         onBlur={() => void flushSave(row.id)}
@@ -498,6 +564,7 @@ export function InviteSessionClient({
                                 a.id === row.id ? next : a,
                               ),
                             );
+                            markQueuedSave(next);
                             await persistImmediate(next);
                           }}
                           aria-label="Invite to all countries"
@@ -534,6 +601,7 @@ export function InviteSessionClient({
                                     a.id === row.id ? nextRow : a,
                                   ),
                                 );
+                                markQueuedSave(nextRow);
                                 await persistImmediate(nextRow);
                               }}
                               aria-label={`Invite to ${c}`}
