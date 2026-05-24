@@ -2,9 +2,6 @@ import {
   clerkMiddleware,
   createRouteMatcher,
 } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-
-import { readClerkAppMetadata } from "@/lib/auth/metadata";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -14,43 +11,10 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
 ]);
 
-const isPendingRoute = createRouteMatcher(["/pending-approval(.*)"]);
-const isAccessDeniedRoute = createRouteMatcher(["/access-denied(.*)"]);
-const isAdminUsersRoute = createRouteMatcher(["/workspace/users(.*)"]);
-
 export default clerkMiddleware(async (auth, request) => {
   if (isPublicRoute(request)) return;
 
-  const { userId, sessionClaims } = await auth.protect();
-  const meta = readClerkAppMetadata(sessionClaims?.publicMetadata);
-
-  if (!meta) {
-    return;
-  }
-
-  if (meta.appStatus === "pending") {
-    if (!isPendingRoute(request)) {
-      return NextResponse.redirect(new URL("/pending-approval", request.url));
-    }
-    return;
-  }
-
-  if (meta.appStatus === "disabled") {
-    if (!isAccessDeniedRoute(request)) {
-      return NextResponse.redirect(new URL("/access-denied", request.url));
-    }
-    return;
-  }
-
-  if (meta.appStatus === "active") {
-    if (isPendingRoute(request) || isAccessDeniedRoute(request)) {
-      return NextResponse.redirect(new URL("/workspace", request.url));
-    }
-    if (isAdminUsersRoute(request) && meta.appRole !== "admin") {
-      return NextResponse.redirect(new URL("/workspace", request.url));
-    }
-  }
-
+  await auth.protect();
 });
 
 export const config = {
