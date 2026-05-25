@@ -13,6 +13,7 @@ import type {
 const CACHE_TAG = "industry-news-v2";
 const REVALIDATE_SECONDS = 3600;
 const FETCH_TIMEOUT_MS = 10_000;
+const MAX_FEED_BYTES = 1_500_000;
 const MAX_PER_SOURCE = 30;
 const MAX_TOTAL_ITEMS = 60;
 
@@ -65,6 +66,18 @@ function parseFeedConfigsFromEnv(): FeedConfig[] {
   }
 
   return configs.length > 0 ? configs : DEFAULT_FEEDS;
+}
+
+function normalizeHttpUrl(value: string): string | null {
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.href;
+  } catch {
+    return null;
+  }
 }
 
 /** RSS parsers sometimes return nested objects (e.g. Fierce Pharma title as link node). */
@@ -168,11 +181,16 @@ function itemId(link: string, guid?: string): string {
 }
 
 async function fetchFeedXml(url: string): Promise<string> {
+  const feedUrl = normalizeHttpUrl(url);
+  if (!feedUrl) {
+    throw new Error("Feed URL must use http or https");
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(feedUrl, {
       signal: controller.signal,
       headers: {
         "User-Agent": USER_AGENT,
@@ -185,7 +203,7 @@ async function fetchFeedXml(url: string): Promise<string> {
       throw new Error(`HTTP ${res.status}`);
     }
 
-    const text = await res.text();
+    const text = await readResponseTextWithLimit(res);
     if (
       text.includes("cf-browser-verification") ||
       text.includes("you have been blocked")
@@ -202,6 +220,44 @@ async function fetchFeedXml(url: string): Promise<string> {
   }
 }
 
+async function readResponseTextWithLimit(res: Response): Promise<string> {
+  const contentLength = res.headers.get("content-length");
+  if (contentLength) {
+    const parsedLength = Number.parseInt(contentLength, 10);
+    if (Number.isFinite(parsedLength) && parsedLength > MAX_FEED_BYTES) {
+      throw new Error("Feed response is too large");
+    }
+  }
+
+  if (!res.body) {
+    const text = await res.text();
+    if (new TextEncoder().encode(text).byteLength > MAX_FEED_BYTES) {
+      throw new Error("Feed response is too large");
+    }
+    return text;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let receivedBytes = 0;
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    receivedBytes += value.byteLength;
+    if (receivedBytes > MAX_FEED_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error("Feed response is too large");
+    }
+
+    text += decoder.decode(value, { stream: true });
+  }
+
+  return text + decoder.decode();
+}
+
 async function parseFeed(config: FeedConfig): Promise<IndustryNewsItem[]> {
   const xml = await fetchFeedXml(config.url);
   const feed = await parser.parseString(xml);
@@ -209,7 +265,8 @@ async function parseFeed(config: FeedConfig): Promise<IndustryNewsItem[]> {
 
   for (const entry of feed.items ?? []) {
     const title = normalizeRssText(entry.title);
-    const link = normalizeRssText(entry.link) ?? normalizeRssText(entry.guid);
+    const rawLink = normalizeRssText(entry.link) ?? normalizeRssText(entry.guid);
+    const link = rawLink ? normalizeHttpUrl(rawLink) : null;
     if (!title || !link) continue;
 
     const publishedAt = normalizePublishedAt(entry.isoDate, entry.pubDate);

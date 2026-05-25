@@ -21,6 +21,15 @@ const COLLAPSED_MAX_HEIGHT = `${VISIBLE_ROWS * 5.25}rem`;
 type SortOrder = "newest" | "oldest";
 type SourceFilter = "all" | string;
 
+function isSafeExternalNewsLink(href: string): boolean {
+  try {
+    const parsed = new URL(href);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 type WorkspaceNewsFeedClientProps = {
   className?: string;
   items: IndustryNewsItem[];
@@ -41,9 +50,14 @@ export function WorkspaceNewsFeedClient({
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState(false);
 
+  const safeItems = useMemo(
+    () => items.filter((item) => isSafeExternalNewsLink(item.link)),
+    [items],
+  );
+
   const enrichedItems = useMemo(
-    () => augmentNewsItemsWithClients(items, projectClientNames),
-    [items, projectClientNames],
+    () => augmentNewsItemsWithClients(safeItems, projectClientNames),
+    [safeItems, projectClientNames],
   );
 
   const sources = useMemo(() => {
