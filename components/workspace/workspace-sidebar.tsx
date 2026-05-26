@@ -106,7 +106,7 @@ function SidebarLink({ item }: { item: NavItem }) {
             "relative flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors",
             "hover:bg-secondary hover:text-foreground",
             active &&
-              "bg-secondary text-primary before:absolute before:-left-2 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-r before:bg-primary",
+              "bg-secondary text-[hsl(var(--dos-navy))] dark:text-primary before:absolute before:-left-2 before:top-1.5 before:bottom-1.5 before:w-0.5 before:rounded-r before:bg-[hsl(var(--dos-teal))]",
           )}
           aria-current={active ? "page" : undefined}
         >
@@ -131,7 +131,7 @@ export function WorkspaceSidebar({
   pendingCount?: number;
 }) {
   return (
-    <aside className="z-40 flex h-full w-14 shrink-0 flex-col items-center border-r border-border bg-card py-4">
+    <aside className="z-40 flex h-full w-14 shrink-0 flex-col items-center border-r border-border bg-card py-4 shadow-[1px_0_0_hsl(var(--border))]">
       <Link
         href="/workspace"
         className="mb-6 flex h-8 w-8 items-center justify-center rounded-md outline-none transition hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring"

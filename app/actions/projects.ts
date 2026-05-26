@@ -9,6 +9,11 @@ import {
 import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import { isAllowedInvitelyMarket } from "@/lib/invitely/countries";
 import { normalizeWhitespace } from "@/lib/invitely/validation";
+import {
+  normalizeProjectSpecs,
+  validateProjectSpecsInput,
+  type ProjectSpecs,
+} from "@/lib/projects/project-specs";
 import type { Project, ProjectSummary } from "@/lib/projects/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -26,10 +31,24 @@ type DbProjectRow = {
   project_number: string;
   project_name: string;
   markets: string[];
+  project_specs?: unknown;
   created_at: string;
 };
 
-function mapSummary(row: DbProjectRow): ProjectSummary {
+const PROJECT_SELECT =
+  "id, clerk_user_id, client_name, project_number, project_name, markets, project_specs, created_at";
+
+function projectSpecsSchemaHint(errorMessage: string): string | null {
+  if (/project_specs/i.test(errorMessage) && /column|schema cache/i.test(errorMessage)) {
+    return "Database schema is out of date. Run migration 016_project_specs.sql in the Supabase SQL editor, then try again.";
+  }
+  return null;
+}
+
+function mapSummary(
+  row: DbProjectRow,
+  ownerDisplayName: string,
+): ProjectSummary {
   return {
     id: row.id,
     clientName: row.client_name,
@@ -37,11 +56,50 @@ function mapSummary(row: DbProjectRow): ProjectSummary {
     projectName: row.project_name,
     markets: row.markets ?? [],
     createdAt: row.created_at,
+    ownerClerkUserId: row.clerk_user_id,
+    ownerDisplayName,
   };
 }
 
-function mapProject(row: DbProjectRow): Project {
-  return mapSummary(row);
+function mapProject(row: DbProjectRow, ownerDisplayName: string): Project {
+  return {
+    ...mapSummary(row, ownerDisplayName),
+    projectSpecs: normalizeProjectSpecs(row.project_specs),
+  };
+}
+
+async function resolveOwnerDisplayNames(
+  supabase: ReturnType<typeof createAdminClient>,
+  clerkUserIds: string[],
+): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(clerkUserIds.filter(Boolean)));
+  const map = new Map<string, string>();
+  if (unique.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("clerk_user_id, display_name, email")
+    .in("clerk_user_id", unique);
+
+  if (error) return map;
+
+  for (const row of data ?? []) {
+    const id = row.clerk_user_id as string | null;
+    if (!id) continue;
+    const name =
+      (typeof row.display_name === "string" && row.display_name.trim()) ||
+      (typeof row.email === "string" && row.email.trim()) ||
+      "";
+    if (name) map.set(id, name);
+  }
+  return map;
+}
+
+function ownerLabel(
+  clerkUserId: string,
+  owners: Map<string, string>,
+): string {
+  return owners.get(clerkUserId) ?? "Unknown";
 }
 
 function validateMarkets(markets: unknown): string[] {
@@ -133,9 +191,7 @@ export async function listProjects(): Promise<
   const supabase = createAdminClient();
   let query = supabase
     .from("projects")
-    .select(
-      "id, clerk_user_id, client_name, project_number, project_name, markets, created_at",
-    )
+    .select(PROJECT_SELECT)
     .order("created_at", { ascending: false });
 
   const ownerFilter = ownerClerkIdFilter(appUser);
@@ -146,7 +202,12 @@ export async function listProjects(): Promise<
   const { data, error } = await query;
 
   if (error) return { error: error.message };
-  return (data ?? []).map((row) => mapSummary(row as DbProjectRow));
+  const rows = (data ?? []) as DbProjectRow[];
+  const owners = await resolveOwnerDisplayNames(
+    supabase,
+    rows.map((r) => r.clerk_user_id),
+  );
+  return rows.map((row) => mapSummary(row, ownerLabel(row.clerk_user_id, owners)));
 }
 
 export async function getProject(id: string): Promise<Project> {
@@ -157,9 +218,7 @@ export async function getProject(id: string): Promise<Project> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("projects")
-    .select(
-      "id, clerk_user_id, client_name, project_number, project_name, markets, created_at",
-    )
+    .select(PROJECT_SELECT)
     .eq("id", id)
     .maybeSingle();
 
@@ -170,7 +229,8 @@ export async function getProject(id: string): Promise<Project> {
     throw new Error("Project not found.");
   }
 
-  return mapProject(row);
+  const owners = await resolveOwnerDisplayNames(supabase, [row.clerk_user_id]);
+  return mapProject(row, ownerLabel(row.clerk_user_id, owners));
 }
 
 export async function updateProject(input: {
@@ -244,6 +304,70 @@ export async function updateProject(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Could not update project.",
+    };
+  }
+}
+
+export async function updateProjectSpecs(input: {
+  projectId: string;
+  screenerId?: string;
+  specs: ProjectSpecs;
+}): Promise<
+  { ok: true; specs: ProjectSpecs } | { ok: false; error: string }
+> {
+  try {
+    const appUser = await getActiveAppUserForAction();
+    if ("error" in appUser) return { ok: false, error: appUser.error };
+    assertUuid(input.projectId);
+
+    const validated = validateProjectSpecsInput(input.specs);
+    if (!validated.ok) return validated;
+
+    const supabase = createAdminClient();
+    const { data: existing, error: findError } = await supabase
+      .from("projects")
+      .select("id, clerk_user_id")
+      .eq("id", input.projectId)
+      .maybeSingle();
+
+    if (findError) {
+      const hint = projectSpecsSchemaHint(findError.message);
+      return { ok: false, error: hint ?? findError.message };
+    }
+    if (
+      !existing ||
+      !canAccessOwnedResource(
+        appUser,
+        (existing as { clerk_user_id: string }).clerk_user_id,
+      )
+    ) {
+      return { ok: false, error: "Project not found." };
+    }
+
+    const { error } = await supabase
+      .from("projects")
+      .update({ project_specs: validated.specs })
+      .eq("id", input.projectId);
+
+    if (error) {
+      const hint = projectSpecsSchemaHint(error.message);
+      return { ok: false, error: hint ?? error.message };
+    }
+
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${input.projectId}`);
+    revalidatePath("/screener-studio/projects");
+    revalidatePath("/workspace/screener-studio");
+    if (input.screenerId) {
+      revalidatePath(`/workspace/screener-studio/${input.screenerId}`);
+    }
+
+    return { ok: true, specs: validated.specs };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not save project specs.",
     };
   }
 }

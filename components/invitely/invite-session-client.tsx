@@ -34,9 +34,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const MATRIX_CHECKBOX_CLASS =
-  "border-foreground/30 bg-muted/80 shadow-sm ring-1 ring-foreground/10 hover:border-primary/50 hover:bg-muted data-[state=checked]:border-transparent data-[state=checked]:bg-brand-gradient data-[state=checked]:text-white data-[state=checked]:shadow-md disabled:bg-muted/40 disabled:opacity-50";
-
 function invitePath(sessionId: string) {
   return `/invite/${sessionId}`;
 }
@@ -53,7 +50,7 @@ function InviteBrandLogo({ className }: { className?: string }) {
 function LinkCreatorBlock({ createdBy }: { createdBy: InvitelySessionCreator }) {
   return (
     <div className="rounded-xl border border-border/50 bg-background/50 px-3.5 py-2.5 text-right">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         Link set up by
       </p>
       <p className="mt-0.5 text-sm font-semibold text-foreground">{createdBy.name}</p>
@@ -261,9 +258,6 @@ export function InviteSessionClient({
     return (
       <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
         <div className="w-full max-w-md">
-          <div className="mb-4 flex justify-end">
-            <LinkCreatorBlock createdBy={createdBy} />
-          </div>
           <div className="mb-6 flex flex-col items-center gap-3 text-center animate-fade-in-up">
             <div className="relative">
               <div className="absolute inset-0 -z-10 rounded-full bg-brand-gradient opacity-40 blur-2xl" />
@@ -273,19 +267,25 @@ export function InviteSessionClient({
             </div>
             <div className="space-y-1.5">
               <Badge variant="gradient">Private invite</Badge>
-              <h1 className="text-3xl font-bold tracking-tight text-balance">
+              <h1 className="font-display text-3xl font-bold tracking-tight text-balance">
                 <span className="text-gradient">Unlock</span> attendee list
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Enter your name so changes can be attributed, then use the
-                password your PM shared.
+              <p className="text-sm text-muted-foreground text-pretty">
+                Add your name so we can attribute edits, then enter the password
+                your PM shared with you.
               </p>
             </div>
           </div>
 
-          <GlassCard className="p-7 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
-            <InviteBrandLogo className="mb-6" />
-            <form className="space-y-5" onSubmit={(e) => void handleUnlock(e)}>
+          <GlassCard
+            className="p-7 animate-fade-in-up"
+            style={{ animationDelay: "120ms" }}
+          >
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <InviteBrandLogo className="shrink-0" />
+              <LinkCreatorBlock createdBy={createdBy} />
+            </div>
+            <form className="space-y-5 animate-fade-in-up" style={{ animationDelay: "200ms" }} onSubmit={(e) => void handleUnlock(e)}>
               <div className="space-y-1.5">
                 <Label htmlFor="actorName">Your name</Label>
                 <Input
@@ -338,12 +338,11 @@ export function InviteSessionClient({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2 sm:max-w-xl">
                 <Badge variant="gradient">{meta.clientName}</Badge>
-                <h1 className="text-balance text-2xl font-bold tracking-tight sm:text-3xl">
+                <h1 className="font-display text-balance text-2xl font-bold tracking-tight sm:text-3xl">
                   <span className="text-gradient">{meta.projectName}</span>
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  Build the attendee matrix per country. Changes save
-                  automatically.
+                <p className="text-sm text-muted-foreground text-pretty">
+                  Build your attendee matrix by country — we save as you go.
                 </p>
               </div>
               <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -361,7 +360,7 @@ export function InviteSessionClient({
         <GlassCard className="p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-gradient-soft text-foreground ring-1 ring-inset ring-primary/20">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--dos-teal)/0.12)] text-[hsl(var(--dos-navy))] ring-1 ring-inset ring-[hsl(var(--dos-teal)/0.25)] dark:text-[hsl(var(--dos-teal))]">
                 <ClipboardPaste className="h-4 w-4" />
               </div>
               <div>
@@ -412,26 +411,28 @@ export function InviteSessionClient({
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-border/40 bg-background/30 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur">
-                  <th className="sticky left-0 z-10 min-w-[12rem] bg-background/30 px-3 py-3 backdrop-blur">
+                <tr className="table-head-row sticky top-0 z-20 border-b-[hsl(var(--dos-teal)/0.35)]">
+                  <th className="table-head-cell sticky left-0 z-30 min-w-[12rem] bg-background/95 px-3 py-3 backdrop-blur">
                     <span className="block">Name</span>
                     <span className="mt-0.5 block text-[9px] font-normal normal-case tracking-normal text-muted-foreground/80">
                       optional
                     </span>
                   </th>
-                  <th className="min-w-[14rem] px-3 py-3">Email</th>
-                  <th className="min-w-[7rem] px-2 py-3 text-center">
+                  <th className="table-head-cell min-w-[14rem] px-3 py-3">
+                    Email
+                  </th>
+                  <th className="table-head-cell min-w-[7rem] px-2 py-3 text-center">
                     All
                   </th>
                   {countryCols.map((c) => (
                     <th
                       key={c}
-                      className="min-w-[6rem] px-2 py-3 text-center"
+                      className="table-head-cell min-w-[6rem] px-2 py-3 text-center"
                     >
                       {c}
                     </th>
                   ))}
-                  <th className="min-w-[3rem] px-2 py-3 text-center" />
+                  <th className="table-head-cell min-w-[3rem] px-2 py-3 text-center" />
                 </tr>
               </thead>
               <tbody>
@@ -439,7 +440,7 @@ export function InviteSessionClient({
                   <tr
                     key={row.id}
                     className={cn(
-                      "border-b border-border/30 transition-colors hover:bg-foreground/[0.02]",
+                      "border-b border-border/30 transition-colors hover:border-l-2 hover:border-l-[hsl(var(--dos-teal)/0.4)] hover:bg-[hsl(var(--dos-teal)/0.03)]",
                       idx % 2 === 1 && "bg-foreground/[0.015]",
                     )}
                   >
@@ -482,7 +483,7 @@ export function InviteSessionClient({
                     <td className="px-2 py-2 align-middle">
                       <div className="flex justify-center">
                         <Checkbox
-                          className={MATRIX_CHECKBOX_CLASS}
+                          variant="matrix"
                           checked={row.inviteAll}
                           onCheckedChange={async (checked) => {
                             const v = checked === true;
@@ -512,7 +513,7 @@ export function InviteSessionClient({
                         <td key={c} className="px-2 py-2 align-middle">
                           <div className="flex justify-center">
                             <Checkbox
-                              className={MATRIX_CHECKBOX_CLASS}
+                              variant="matrix"
                               disabled={disabled}
                               checked={checked}
                               onCheckedChange={async (next) => {

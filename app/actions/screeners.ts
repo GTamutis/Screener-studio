@@ -164,6 +164,8 @@ export async function getScreenerById(
     clientName: project.clientName,
     projectName: project.projectName,
     projectNumber: project.projectNumber,
+    markets: project.markets ?? [],
+    projectSpecs: project.projectSpecs,
   };
 }
 

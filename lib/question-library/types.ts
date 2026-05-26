@@ -21,6 +21,8 @@ export type QuestionLibraryType =
 export type QuestionAnswerOption = {
   text: string;
   terminate?: boolean;
+  /** Per-option recruiter / routing instruction (e.g. market, hold). */
+  logicNote?: string;
 };
 
 export type QuestionLibraryStatus = "draft" | "approved" | "archived";

@@ -8,7 +8,16 @@ import { ScreenerEditorRightPanel } from "@/components/screener-editor/screener-
 import { ScreenerEditorToolbar } from "@/components/screener-editor/screener-editor-toolbar";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
+import type { ProjectSpecs } from "@/lib/projects/project-specs";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
+import {
+  createEmptyAiChatState,
+  type ScreenerEditorAiChatState,
+  type ScreenerQuestionAddedOptions,
+} from "@/lib/screeners/ai-chat/editor-chat-state";
+import {
+  type ScreenerEditorBrowserTab,
+} from "@/components/screener-editor/screener-editor-right-panel";
 
 export function ScreenerEditor({
   screener,
@@ -23,6 +32,19 @@ export function ScreenerEditor({
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
+  const [rightPanelTab, setRightPanelTab] =
+    useState<ScreenerEditorBrowserTab>("specs");
+  const [projectSpecs, setProjectSpecs] = useState<ProjectSpecs>(
+    screener.projectSpecs,
+  );
+  const [aiChatState, setAiChatState] = useState<ScreenerEditorAiChatState>(
+    createEmptyAiChatState,
+  );
+
+  const screenerForPanels: ScreenerWithProject = {
+    ...screener,
+    projectSpecs,
+  };
 
   const selectedQuestion = useMemo(
     () => questions.find((q) => q.id === selectedQuestionId) ?? null,
@@ -47,15 +69,26 @@ export function ScreenerEditor({
     setSelectedQuestionId(null);
   }, []);
 
-  const handleQuestionAdded = useCallback((question: ScreenerQuestion) => {
-    setQuestions((prev) => [...prev, question]);
-    setSelectedQuestionId(question.id);
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`question-${question.id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }, []);
+  const handleQuestionAdded = useCallback(
+    (question: ScreenerQuestion, options?: ScreenerQuestionAddedOptions) => {
+      setQuestions((prev) => [...prev, question]);
+      if (options?.select === false) {
+        requestAnimationFrame(() => {
+          document
+            .getElementById(`question-${question.id}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+        return;
+      }
+      setSelectedQuestionId(question.id);
+      requestAnimationFrame(() => {
+        document
+          .getElementById(`question-${question.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    },
+    [],
+  );
 
   const handleQuestionUpdated = useCallback((question: ScreenerQuestion) => {
     setQuestions((prev) =>
@@ -72,11 +105,12 @@ export function ScreenerEditor({
   }, []);
 
   return (
-    <div className="flex h-[calc(100dvh)] min-h-0 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--workspace-surface))]">
       <ScreenerEditorToolbar screener={screener} />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <ScreenerEditorOutline
           questions={questions}
+          markets={screener.markets}
           selectedQuestionId={selectedQuestionId}
           onSelectQuestion={handleSelectQuestion}
         />
@@ -88,12 +122,22 @@ export function ScreenerEditor({
           onDeselectQuestion={handleDeselectQuestion}
           onQuestionAdded={handleQuestionAdded}
           onQuestionsReplaced={handleQuestionsReplaced}
+          onOpenAiChat={() => {
+            setSelectedQuestionId(null);
+            setRightPanelTab("ai");
+          }}
         />
         <ScreenerEditorRightPanel
-          screenerId={screener.id}
+          screener={screenerForPanels}
+          projectSpecs={projectSpecs}
+          onProjectSpecsChange={setProjectSpecs}
           libraryQuestions={libraryQuestions}
           screenerQuestions={questions}
           selectedQuestion={selectedQuestion}
+          browserTab={rightPanelTab}
+          onBrowserTabChange={setRightPanelTab}
+          aiChatState={aiChatState}
+          onAiChatStateChange={setAiChatState}
           onQuestionAdded={handleQuestionAdded}
           onQuestionUpdated={handleQuestionUpdated}
           onDeselectQuestion={handleDeselectQuestion}

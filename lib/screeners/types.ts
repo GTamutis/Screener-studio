@@ -9,8 +9,12 @@ export interface ScreenerSummary {
   updatedAt: string;
 }
 
+import type { ProjectSpecs } from "@/lib/projects/project-specs";
+
 export interface ScreenerWithProject extends ScreenerSummary {
   clientName: string;
   projectName: string;
   projectNumber: string;
+  markets: string[];
+  projectSpecs: ProjectSpecs;
 }

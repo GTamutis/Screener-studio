@@ -1,17 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, useTransition } from "react";
-import { Loader2, X } from "lucide-react";
+import { ArrowLeft, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateScreenerQuestion } from "@/app/actions/screener-questions";
-import { ComingSoonPanel } from "@/components/screener-editor/coming-soon-panel";
+import { QuestionLogicForm } from "@/components/screener-editor/question-logic-form";
+import { QuestionQuotasForm } from "@/components/screener-editor/question-quotas-form";
 import {
   QuestionEditorForm,
   type QuestionEditorFormValues,
 } from "@/components/screener-editor/question-editor-form";
 import { QuestionSourceBadge } from "@/components/screener-editor/question-source-badge";
 import { Button } from "@/components/ui/button";
+import {
+  countQuotaOptions,
+  screenerQuestionToQuotaFormState,
+  type ScreenerQuestionQuotaConfig,
+} from "@/lib/screeners/question-quotas";
 import {
   questionTypeHasOptions,
   screenerQuestionToFormState,
@@ -26,20 +32,23 @@ const PROPERTY_TABS = [
   { id: "question", label: "Question" },
   { id: "logic", label: "Logic" },
   { id: "quotas", label: "Quotas" },
-  { id: "validation", label: "Validation" },
 ] as const;
 
 type PropertyTab = (typeof PROPERTY_TABS)[number]["id"];
 
 export function ScreenerEditorQuestionPropertiesPanel({
   screenerId,
+  markets,
   question,
   onClose,
+  onBackToAiChat,
   onQuestionUpdated,
 }: {
   screenerId: string;
+  markets: string[];
   question: ScreenerQuestion;
   onClose: () => void;
+  onBackToAiChat?: () => void;
   onQuestionUpdated: (question: ScreenerQuestion) => void;
 }) {
   const formId = useId();
@@ -48,11 +57,28 @@ export function ScreenerEditorQuestionPropertiesPanel({
   const [values, setValues] = useState<QuestionEditorFormValues>(() =>
     screenerQuestionToFormState(question),
   );
+  const [quotaConfig, setQuotaConfig] = useState<ScreenerQuestionQuotaConfig>(
+    () => screenerQuestionToQuotaFormState(question),
+  );
 
   useEffect(() => {
     setValues(screenerQuestionToFormState(question));
+    setQuotaConfig(screenerQuestionToQuotaFormState(question));
     setActiveTab("question");
+    // Reset panel when the selected question or its server snapshot changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- question identity + updatedAt
   }, [question.id, question.updatedAt]);
+
+  useEffect(() => {
+    const optionCount = countQuotaOptions(values.answerOptions);
+    if (quotaConfig.optionTargets.length === optionCount) return;
+    setQuotaConfig((prev) => ({
+      ...prev,
+      optionTargets: Array.from({ length: optionCount }, (_, i) => {
+        return prev.optionTargets[i] ?? {};
+      }),
+    }));
+  }, [values.answerOptions, quotaConfig.optionTargets.length]);
 
   const handleSave = useCallback(
     (e: React.FormEvent) => {
@@ -67,6 +93,7 @@ export function ScreenerEditorQuestionPropertiesPanel({
           questionType: values.questionType,
           notes: values.notes,
           answerOptions: showOptions ? values.answerOptions : undefined,
+          quotaConfig,
         });
 
         if (!res.ok) {
@@ -78,15 +105,24 @@ export function ScreenerEditorQuestionPropertiesPanel({
         onQuestionUpdated(res.question);
       });
     },
-    [screenerId, question.id, values, onQuestionUpdated],
+    [screenerId, question.id, values, quotaConfig, onQuestionUpdated],
   );
 
-  const activeLabel =
-    PROPERTY_TABS.find((t) => t.id === activeTab)?.label ?? "Question";
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-gray-200 px-4 py-3 dark:border-border">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-border/80 px-4 py-3">
+        {onBackToAiChat ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mb-2 h-8 gap-1.5 px-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={onBackToAiChat}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to AI Chat
+          </Button>
+        ) : null}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -112,7 +148,7 @@ export function ScreenerEditorQuestionPropertiesPanel({
       <div
         role="tablist"
         aria-label="Question properties"
-        className="flex shrink-0 border-b border-gray-200 dark:border-border"
+        className="flex shrink-0 border-b border-border/80"
       >
         {PROPERTY_TABS.map((tab) => (
           <button
@@ -133,13 +169,13 @@ export function ScreenerEditorQuestionPropertiesPanel({
         ))}
       </div>
 
-      {activeTab === "question" ? (
-        <form
-          id={formId}
-          onSubmit={handleSave}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <form
+        id={formId}
+        onSubmit={handleSave}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {activeTab === "question" ? (
             <QuestionEditorForm
               formId={formId}
               values={values}
@@ -149,22 +185,42 @@ export function ScreenerEditorQuestionPropertiesPanel({
               )}
               disabled={pending}
             />
-          </div>
-          <div className="shrink-0 border-t border-gray-200 px-4 py-3 dark:border-border">
-            <Button
-              type="submit"
+          ) : null}
+          {activeTab === "logic" ? (
+            <QuestionLogicForm
+              formId={formId}
+              questionType={values.questionType}
+              answerOptions={values.answerOptions}
+              onAnswerOptionsChange={(answerOptions) =>
+                setValues((v) => ({ ...v, answerOptions }))
+              }
+              notes={values.notes}
+              onNotesChange={(notes) => setValues((v) => ({ ...v, notes }))}
               disabled={pending}
-              className="w-full gap-2"
-              size="sm"
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save changes
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <ComingSoonPanel label={activeLabel} />
-      )}
+            />
+          ) : null}
+          {activeTab === "quotas" ? (
+            <QuestionQuotasForm
+              markets={markets}
+              answerOptions={values.answerOptions}
+              quotaConfig={quotaConfig}
+              onQuotaConfigChange={setQuotaConfig}
+              disabled={pending}
+            />
+          ) : null}
+        </div>
+        <div className="shrink-0 border-t border-border/80 px-4 py-3">
+          <Button
+            type="submit"
+            disabled={pending}
+            className="w-full gap-2"
+            size="sm"
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Save changes
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

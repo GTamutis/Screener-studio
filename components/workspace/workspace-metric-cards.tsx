@@ -1,4 +1,5 @@
 import type { WorkspaceMetrics } from "@/lib/workspace/metrics";
+import { workspaceCardClassName } from "@/lib/form-classes";
 import { cn } from "@/lib/utils";
 
 const CARDS: {
@@ -30,12 +31,15 @@ export function WorkspaceMetricCards({
         <article
           key={key}
           title={hint}
-          className="flex flex-col gap-2 rounded-2xl border border-border bg-card px-5 py-4"
+          className={cn(
+            workspaceCardClassName,
+            "flex flex-col gap-2 px-5 py-4 transition-shadow hover:shadow-glass-sm border-l-[3px] border-l-[hsl(var(--dos-navy))]",
+          )}
         >
-          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
             {label}
           </p>
-          <p className="text-3xl font-semibold tracking-tight text-foreground">
+          <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
             {metrics[key]}
           </p>
         </article>

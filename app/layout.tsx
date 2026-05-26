@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import localFont from "next/font/local";
+import { JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
@@ -10,27 +9,10 @@ import { ConditionalMesh } from "@/components/layout/conditional-mesh";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
   display: "swap",
-});
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
 });
 
 export const metadata: Metadata = {
@@ -40,6 +22,10 @@ export const metadata: Metadata = {
   },
   description:
     "Day One Strategy workspace — project setup, screener workflows, quotas, invitations, and delivery.",
+  icons: {
+    icon: "/brand/day-one-icon-white.png",
+    apple: "/brand/day-one-icon-white.png",
+  },
 };
 
 export default function RootLayout({
@@ -48,9 +34,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={
+        {
+          "--font-hypertext": '"Hypertext", Arial, sans-serif',
+          "--font-display": '"Hypertext Display", "Hypertext", Arial, sans-serif',
+        } as React.CSSProperties
+      }
+    >
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} ${geistSans.variable} ${geistMono.variable} relative min-h-screen bg-background font-sans antialiased`}
+        className={`${jetbrainsMono.variable} relative min-h-screen bg-background font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

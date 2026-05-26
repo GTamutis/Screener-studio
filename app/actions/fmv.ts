@@ -22,6 +22,7 @@ type DbFmvRow = {
   hourly_rate_usd: string | number;
   hourly_rate_gbp: string | number;
   hourly_rate_eur: string | number;
+  effective_date: string;
   fx_rate_date: string;
   created_at: string;
 };
@@ -42,6 +43,7 @@ function mapRow(row: DbFmvRow): FmvEntry {
     hourlyRateUsd: num(row.hourly_rate_usd),
     hourlyRateGbp: num(row.hourly_rate_gbp),
     hourlyRateEur: num(row.hourly_rate_eur),
+    effectiveDate: row.effective_date,
     fxRateDate: row.fx_rate_date,
     createdAt: row.created_at,
   };
@@ -75,6 +77,25 @@ function validateCurrency(code: string) {
   return c;
 }
 
+function validateEffectiveDate(value: string, notAfter: string) {
+  const d = value.trim();
+  const maxDay = notAfter.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    throw new Error("Rate date must be YYYY-MM-DD.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(maxDay)) {
+    throw new Error("Invalid client date.");
+  }
+  const parsed = new Date(`${d}T12:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("Rate date is not a valid calendar day.");
+  }
+  if (d > maxDay) {
+    throw new Error("Rate date cannot be after today.");
+  }
+  return d;
+}
+
 export async function listFmvEntries(): Promise<
   { entries: FmvEntry[]; stats: FmvDatabaseStats } | { error: string }
 > {
@@ -85,7 +106,7 @@ export async function listFmvEntries(): Promise<
   let query = supabase
     .from("fmv_entries")
     .select(
-      "id, clerk_user_id, client_name, country, project_target, methodology, currency_code, hourly_rate_local, hourly_rate_usd, hourly_rate_gbp, hourly_rate_eur, fx_rate_date, created_at",
+      "id, clerk_user_id, client_name, country, project_target, methodology, currency_code, hourly_rate_local, hourly_rate_usd, hourly_rate_gbp, hourly_rate_eur, effective_date, fx_rate_date, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -109,6 +130,9 @@ export async function createFmvEntry(input: {
   methodology?: string;
   currencyCode: string;
   hourlyRateLocal: number;
+  effectiveDate: string;
+  /** YYYY-MM-DD for today in the user's local timezone (from the browser). */
+  clientLocalToday: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   try {
     const appUser = await getActiveAppUserForAction();
@@ -146,9 +170,26 @@ export async function createFmvEntry(input: {
       return { ok: false, error: "Hourly rate must be a positive number." };
     }
 
+    let effectiveDate: string;
+    try {
+      effectiveDate = validateEffectiveDate(
+        input.effectiveDate,
+        input.clientLocalToday,
+      );
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "Invalid rate date.",
+      };
+    }
+
     let converted: Awaited<ReturnType<typeof hourlyLocalToUsdGbpEur>>;
     try {
-      converted = await hourlyLocalToUsdGbpEur(hourlyRateLocal, currencyCode);
+      converted = await hourlyLocalToUsdGbpEur(
+        hourlyRateLocal,
+        currencyCode,
+        effectiveDate,
+      );
     } catch (e) {
       return {
         ok: false,
@@ -171,6 +212,7 @@ export async function createFmvEntry(input: {
         hourly_rate_usd: converted.hourlyUsd,
         hourly_rate_gbp: converted.hourlyGbp,
         hourly_rate_eur: converted.hourlyEur,
+        effective_date: effectiveDate,
         fx_rate_date: converted.fxRateDate,
       })
       .select("id")

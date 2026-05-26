@@ -18,10 +18,11 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: [
-          "var(--font-inter)",
-          "var(--font-geist-sans)",
-          "system-ui",
+        sans: ["var(--font-hypertext)", "Arial", "sans-serif"],
+        display: [
+          "var(--font-display)",
+          "var(--font-hypertext)",
+          "Arial",
           "sans-serif",
         ],
         mono: [
@@ -32,6 +33,10 @@ const config: Config = {
         ],
       },
       colors: {
+        "dos-teal": "hsl(var(--dos-teal))",
+        "dos-glow": "hsl(var(--dos-glow))",
+        "dos-navy": "hsl(var(--dos-navy))",
+        "dos-blue": "hsl(var(--dos-blue))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -86,9 +91,9 @@ const config: Config = {
         "brand-gradient-soft":
           "linear-gradient(135deg, hsl(var(--brand-from) / 0.1) 0%, hsl(var(--brand-via) / 0.1) 50%, hsl(var(--brand-to) / 0.1) 100%)",
         "mesh-light":
-          "radial-gradient(at 14% 12%, hsl(40 24% 92% / 0.85) 0px, transparent 52%), radial-gradient(at 86% 18%, hsl(215 35% 92% / 0.45) 0px, transparent 50%), radial-gradient(at 48% 88%, hsl(205 30% 94% / 0.5) 0px, transparent 48%), radial-gradient(at 92% 92%, hsl(38 20% 93% / 0.4) 0px, transparent 45%)",
+          "radial-gradient(at 12% 14%, hsl(var(--dos-blue) / 0.08) 0px, transparent 52%), radial-gradient(at 88% 18%, hsl(var(--dos-teal) / 0.1) 0px, transparent 50%), radial-gradient(at 48% 88%, hsl(var(--dos-navy) / 0.04) 0px, transparent 48%), radial-gradient(at 6% 82%, hsl(var(--dos-glow) / 0.06) 0px, transparent 45%)",
         "mesh-dark":
-          "radial-gradient(at 12% 10%, hsl(215 40% 18% / 0.55) 0px, transparent 50%), radial-gradient(at 85% 20%, hsl(222 35% 14% / 0.6) 0px, transparent 48%), radial-gradient(at 50% 90%, hsl(205 35% 16% / 0.5) 0px, transparent 52%), radial-gradient(at 8% 85%, hsl(40 15% 12% / 0.35) 0px, transparent 45%)",
+          "radial-gradient(at 12% 10%, hsl(var(--dos-navy) / 0.55) 0px, transparent 50%), radial-gradient(at 85% 20%, hsl(var(--dos-blue) / 0.22) 0px, transparent 48%), radial-gradient(at 50% 90%, hsl(var(--dos-teal) / 0.12) 0px, transparent 52%), radial-gradient(at 8% 85%, hsl(var(--dos-glow) / 0.06) 0px, transparent 45%)",
         "grain":
           "url(\"data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
       },

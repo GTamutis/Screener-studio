@@ -21,7 +21,7 @@ export default async function FairMarketValuesPage() {
   if ("error" in result) {
     const setupError = result.error;
     return (
-      <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+      <main className="w-full py-4">
           <div className="space-y-10">
             <PageHeader
               eyebrow="Workspace"
@@ -50,7 +50,7 @@ export default async function FairMarketValuesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+    <main className="w-full py-4">
       <FmvDatabaseTool entries={result.entries} stats={result.stats} />
     </main>
   );

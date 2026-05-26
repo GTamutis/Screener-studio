@@ -32,13 +32,13 @@ export function PageHeader({
         )}
       >
         {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
             {eyebrow}
           </p>
         ) : null}
         <h1
           className={cn(
-            "text-3xl font-bold tracking-tight text-balance sm:text-4xl",
+            "font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl",
             gradientTitle && "text-gradient",
           )}
         >

@@ -3,11 +3,13 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Calculator, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { createFmvEntry } from "@/app/actions/fmv";
+import { FmvProrationPanel } from "@/components/fmv/fmv-proration-panel";
 import type { FmvDatabaseStats, FmvEntry } from "@/lib/fmv/types";
 import { FMV_COMMON_CURRENCIES } from "@/lib/fmv/currencies";
+import { localCalendarIsoDate } from "@/lib/fmv/local-date";
 
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
@@ -24,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { SingleMarketPicker } from "@/components/projects/single-market-picker";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +105,12 @@ export function FmvDatabaseTool({
   );
   const [currencyOther, setCurrencyOther] = React.useState("");
   const [hourlyRate, setHourlyRate] = React.useState("");
+  const [effectiveDate, setEffectiveDate] = React.useState(() =>
+    localCalendarIsoDate(),
+  );
+  const [clientLocalToday, setClientLocalToday] = React.useState(() =>
+    localCalendarIsoDate(),
+  );
 
   const [query, setQuery] = React.useState("");
   const [countryFilter, setCountryFilter] = React.useState<string>("__all__");
@@ -163,6 +172,7 @@ export function FmvDatabaseTool({
     setCurrencySelect(FMV_COMMON_CURRENCIES[0]?.code ?? "USD");
     setCurrencyOther("");
     setHourlyRate("");
+    setEffectiveDate(localCalendarIsoDate());
   }
 
   function onCreate(e: React.FormEvent) {
@@ -191,6 +201,8 @@ export function FmvDatabaseTool({
         methodology,
         currencyCode,
         hourlyRateLocal: rate,
+        effectiveDate,
+        clientLocalToday: localCalendarIsoDate(),
       });
 
       if (!result.ok) {
@@ -198,7 +210,7 @@ export function FmvDatabaseTool({
         return;
       }
 
-      toast.success("FMV entry saved with latest FX conversion.");
+      toast.success("FMV entry saved with FX for the selected rate date.");
       setDialogOpen(false);
       resetForm();
       router.refresh();
@@ -207,18 +219,30 @@ export function FmvDatabaseTool({
 
   const selected = entries.find((e) => e.id === selectedId) ?? null;
 
+  function clearSelection() {
+    setSelectedId(null);
+    setMinutes("");
+  }
+
   return (
-    <div className="space-y-10">
+    <div className="flex w-full max-w-[1400px] flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
+      <div className="min-w-0 flex-1 space-y-10">
       <PageHeader
         eyebrow="Workspace"
         title="Fair Market Values"
-        description="Record client project hourly rates in local currency; we convert to USD, GBP, and EUR using current FX when you save. Search history, filter by country or currency, and prorate selected rows by minutes."
+        description="Record client project hourly rates in local currency; we convert to USD, GBP, and EUR using ECB rates for the rate date you choose. Search history, filter by country or currency, and prorate a selected row by minutes."
         actions={
           <Dialog
             open={dialogOpen}
             onOpenChange={(next) => {
               setDialogOpen(next);
-              if (!next) resetForm();
+              if (next) {
+                const today = localCalendarIsoDate();
+                setClientLocalToday(today);
+                setEffectiveDate(today);
+              } else {
+                resetForm();
+              }
             }}
           >
             <DialogTrigger asChild>
@@ -231,8 +255,8 @@ export function FmvDatabaseTool({
               <DialogHeader>
                 <DialogTitle>Add FMV entry</DialogTitle>
                 <DialogDescription>
-                  Saved entries store FX as of the rate date shown by Frankfurter
-                  (typically the latest ECB working day).
+                  Pick the rate date for FX conversion (ECB rates via Frankfurter;
+                  weekends use the nearest prior working day).
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={onCreate} className="grid gap-4">
@@ -273,19 +297,17 @@ export function FmvDatabaseTool({
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="fmv-ccy">Local currency</Label>
-                    <select
-                      id="fmv-ccy"
-                      className="glass-input flex h-10 w-full rounded-lg px-3 py-2 text-sm shadow-sm"
+                    <Label>Local currency</Label>
+                    <FilterSelect
+                      className="w-full"
                       value={currencySelect}
-                      onChange={(ev) => setCurrencySelect(ev.target.value)}
-                    >
-                      {FMV_COMMON_CURRENCIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={setCurrencySelect}
+                      aria-label="Local currency"
+                      options={FMV_COMMON_CURRENCIES.map((c) => ({
+                        value: c.code,
+                        label: c.label,
+                      }))}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="fmv-ccy-other">Other ISO code (optional)</Label>
@@ -301,18 +323,35 @@ export function FmvDatabaseTool({
                     />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="fmv-rate">Hourly rate (local)</Label>
-                  <Input
-                    id="fmv-rate"
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    step="any"
-                    required
-                    value={hourlyRate}
-                    onChange={(ev) => setHourlyRate(ev.target.value)}
-                  />
+                <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="fmv-rate">Hourly rate (local)</Label>
+                    <Input
+                      id="fmv-rate"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="any"
+                      required
+                      value={hourlyRate}
+                      onChange={(ev) => setHourlyRate(ev.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="fmv-effective-date">Rate date</Label>
+                    <Input
+                      id="fmv-effective-date"
+                      type="date"
+                      required
+                      max={clientLocalToday}
+                      value={effectiveDate}
+                      onChange={(ev) => setEffectiveDate(ev.target.value)}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Defaults to today in your timezone (
+                      {clientLocalToday}).
+                    </p>
+                  </div>
                 </div>
                 <DialogFooter className="gap-2 sm:gap-0">
                   <Button
@@ -350,8 +389,7 @@ export function FmvDatabaseTool({
       </section>
 
       <GlassCard className="space-y-4 p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="grid gap-2 sm:col-span-2">
               <Label htmlFor="fmv-search">Keyword search</Label>
               <div className="relative">
@@ -366,59 +404,31 @@ export function FmvDatabaseTool({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="fmv-filter-country">Country</Label>
-              <select
-                id="fmv-filter-country"
-                className="glass-input flex h-10 w-full rounded-lg px-3 py-2 text-sm shadow-sm"
+              <Label>Country</Label>
+              <FilterSelect
+                className="w-full"
                 value={countryFilter}
-                onChange={(ev) => setCountryFilter(ev.target.value)}
-              >
-                <option value="__all__">All countries</option>
-                {countryOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setCountryFilter}
+                aria-label="Filter by country"
+                options={[
+                  { value: "__all__", label: "All countries" },
+                  ...countryOptions.map((c) => ({ value: c, label: c })),
+                ]}
+              />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="fmv-filter-ccy">Currency</Label>
-              <select
-                id="fmv-filter-ccy"
-                className="glass-input flex h-10 w-full rounded-lg px-3 py-2 text-sm shadow-sm"
+              <Label>Currency</Label>
+              <FilterSelect
+                className="w-full"
                 value={currencyFilter}
-                onChange={(ev) => setCurrencyFilter(ev.target.value)}
-              >
-                <option value="__all__">All currencies</option>
-                {currencyOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setCurrencyFilter}
+                aria-label="Filter by currency"
+                options={[
+                  { value: "__all__", label: "All currencies" },
+                  ...currencyOptions.map((c) => ({ value: c, label: c })),
+                ]}
+              />
             </div>
-          </div>
-          <div className="flex w-full flex-col gap-2 lg:max-w-xs">
-            <Label htmlFor="fmv-minutes" className="flex items-center gap-2">
-              <Calculator className="h-3.5 w-3.5" />
-              Proration (minutes)
-            </Label>
-            <Input
-              id="fmv-minutes"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              placeholder="Select a row first"
-              value={minutes}
-              onChange={(ev) => setMinutes(ev.target.value)}
-              disabled={!selectedId}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Click a row to select it. Costs use stored hourly rates (FX from
-              save date).
-            </p>
-          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border/60">
@@ -433,7 +443,7 @@ export function FmvDatabaseTool({
                 <th className="px-3 py-3 font-semibold">USD / h</th>
                 <th className="px-3 py-3 font-semibold">GBP / h</th>
                 <th className="px-3 py-3 font-semibold">EUR / h</th>
-                <th className="px-3 py-3 font-semibold">Added</th>
+                <th className="px-3 py-3 font-semibold">Rate date</th>
               </tr>
             </thead>
             <tbody>
@@ -495,11 +505,17 @@ export function FmvDatabaseTool({
                         {formatHourlyCompact(row.hourlyRateEur, "EUR")}
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
-                        <span className="block">
-                          {new Date(row.createdAt).toLocaleDateString()}
+                        <span className="block font-medium text-foreground">
+                          {row.effectiveDate}
                         </span>
+                        {row.fxRateDate !== row.effectiveDate ? (
+                          <span className="block text-[10px]">
+                            ECB {row.fxRateDate}
+                          </span>
+                        ) : null}
                         <span className="block text-[10px]">
-                          FX {row.fxRateDate}
+                          Added{" "}
+                          {new Date(row.createdAt).toLocaleDateString()}
                         </span>
                       </td>
                     </tr>
@@ -553,27 +569,18 @@ export function FmvDatabaseTool({
             </tbody>
           </table>
         </div>
-
-        {selected ? (
-          <p className="text-xs text-muted-foreground">
-            Selected:{" "}
-            <span className="font-medium text-foreground">
-              {selected.clientName}
-            </span>{" "}
-            ·{" "}
-            <button
-              type="button"
-              className="underline-offset-2 hover:underline"
-              onClick={() => {
-                setSelectedId(null);
-                setMinutes("");
-              }}
-            >
-              Clear selection
-            </button>
-          </p>
-        ) : null}
       </GlassCard>
+      </div>
+
+      <FmvProrationPanel
+        className="xl:sticky xl:top-8 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto"
+        selected={selected}
+        minutes={minutes}
+        onMinutesChange={setMinutes}
+        onClearSelection={clearSelection}
+        minutesValid={minutesValid}
+        minutesNum={minutesNum}
+      />
     </div>
   );
 }

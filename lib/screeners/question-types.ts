@@ -2,6 +2,8 @@ import type {
   QuestionAnswerOption,
   QuestionLibraryType,
 } from "@/lib/question-library/types";
+import type { ScreenerQuestionQuotaConfig } from "@/lib/screeners/question-quotas";
+import { normalizeQuotaConfig } from "@/lib/screeners/question-quotas";
 
 export type ScreenerQuestionSource = "library" | "manual" | "ai_draft";
 
@@ -19,6 +21,7 @@ export interface ScreenerQuestion {
   answerOptions: QuestionAnswerOption[];
   /** Routing / criteria notes (screener copy; library unchanged). */
   notes: string | null;
+  quotaConfig: ScreenerQuestionQuotaConfig | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,12 +38,13 @@ export type DbScreenerQuestionRow = {
   question_type: QuestionLibraryType | null;
   answer_options: QuestionAnswerOption[] | null;
   notes?: string | null;
+  quota_config?: unknown;
   created_at: string;
   updated_at: string;
 };
 
 const SELECT_COLUMNS =
-  "id, screener_id, position, question_text, source, is_locked, is_customized, library_question_id, question_type, answer_options, notes, created_at, updated_at";
+  "id, screener_id, position, question_text, source, is_locked, is_customized, library_question_id, question_type, answer_options, notes, quota_config, created_at, updated_at";
 
 export const SCREENER_QUESTION_SELECT = SELECT_COLUMNS;
 
@@ -57,6 +61,12 @@ export function mapScreenerQuestion(row: DbScreenerQuestionRow): ScreenerQuestio
     questionType: row.question_type,
     answerOptions: Array.isArray(row.answer_options) ? row.answer_options : [],
     notes: row.notes ?? null,
+    quotaConfig: row.quota_config
+      ? normalizeQuotaConfig(
+          row.quota_config,
+          Array.isArray(row.answer_options) ? row.answer_options.length : 0,
+        )
+      : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -6,11 +6,10 @@ import { toast } from "sonner";
 
 import { deleteScreenerQuestion } from "@/app/actions/screener-questions";
 import { AddManualQuestionSheet } from "@/components/screener-editor/add-manual-question-sheet";
-import { ScreenerQuestionCard } from "@/components/screener-editor/screener-question-card";
+import { ScreenerQuestionSortableList } from "@/components/screener-editor/screener-question-sortable-list";
 import { Button } from "@/components/ui/button";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
-import { cn } from "@/lib/utils";
 
 export function ScreenerEditorCanvas({
   screener,
@@ -20,6 +19,7 @@ export function ScreenerEditorCanvas({
   onDeselectQuestion,
   onQuestionAdded,
   onQuestionsReplaced,
+  onOpenAiChat,
 }: {
   screener: ScreenerWithProject;
   questions: ScreenerQuestion[];
@@ -28,6 +28,7 @@ export function ScreenerEditorCanvas({
   onDeselectQuestion: () => void;
   onQuestionAdded: (question: ScreenerQuestion) => void;
   onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
+  onOpenAiChat?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -35,7 +36,13 @@ export function ScreenerEditorCanvas({
 
   const handleAddLibrary = () => toast.message("Use the Library tab on the right");
 
-  const handleAskAi = () => toast.message("Ask AI coming soon");
+  const handleAskAi = () => {
+    if (onOpenAiChat) {
+      onOpenAiChat();
+      return;
+    }
+    toast.message("Open the AI Chat tab on the right");
+  };
 
   const handleDelete = (question: ScreenerQuestion) => {
     if (question.isLocked) return;
@@ -67,8 +74,8 @@ export function ScreenerEditorCanvas({
   };
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col bg-gray-100/90 dark:bg-muted/30">
-      <div className="border-b border-gray-200/80 bg-gray-100/90 px-6 py-5 dark:border-border dark:bg-muted/30">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--workspace-surface))]">
+      <div className="shrink-0 border-b border-border/80 bg-[hsl(var(--workspace-panel))] px-6 py-5 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {screener.clientName} · {screener.projectNumber}
         </p>
@@ -86,7 +93,7 @@ export function ScreenerEditorCanvas({
           onClick={(e) => e.stopPropagation()}
         >
           {questions.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white/60 px-8 py-16 text-center dark:border-border dark:bg-card/40">
+            <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--workspace-panel))] px-8 py-16 text-center shadow-sm">
               <p className="text-sm font-medium text-foreground">
                 No questions yet
               </p>
@@ -96,30 +103,23 @@ export function ScreenerEditorCanvas({
               </p>
             </div>
           ) : (
-            questions.map((question) => (
-              <div
-                key={question.id}
-                id={`question-${question.id}`}
-                className={cn(
-                  pending && deletingId === question.id && "opacity-60",
-                )}
-              >
-                <ScreenerQuestionCard
-                  question={question}
-                  selected={selectedQuestionId === question.id}
-                  onSelect={() => onSelectQuestion(question.id)}
-                  onDelete={() => handleDelete(question)}
-                  deleting={deletingId === question.id}
-                />
-              </div>
-            ))
+            <ScreenerQuestionSortableList
+              screenerId={screener.id}
+              questions={questions}
+              selectedQuestionId={selectedQuestionId}
+              onSelectQuestion={onSelectQuestion}
+              onDeleteQuestion={handleDelete}
+              onQuestionsReplaced={onQuestionsReplaced}
+              deletingId={deletingId}
+              reorderDisabled={pending}
+            />
           )}
 
           <div className="flex flex-wrap gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
-              className="gap-2 border-gray-200 bg-white shadow-sm dark:bg-card"
+              className="gap-2 border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm"
               onClick={() => setManualSheetOpen(true)}
             >
               <Plus className="h-4 w-4" />
@@ -128,7 +128,7 @@ export function ScreenerEditorCanvas({
             <Button
               type="button"
               variant="outline"
-              className="gap-2 border-gray-200 bg-white shadow-sm dark:bg-card"
+              className="gap-2 border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm"
               onClick={handleAddLibrary}
             >
               <BookOpen className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function ScreenerEditorCanvas({
             <Button
               type="button"
               variant="outline"
-              className="gap-2 border-gray-200 bg-white shadow-sm dark:bg-card"
+              className="gap-2 border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm"
               onClick={handleAskAi}
             >
               <Bot className="h-4 w-4" />

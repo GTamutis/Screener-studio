@@ -8,7 +8,7 @@ export default async function WorkspaceUsersPage() {
   const result = await listAppUsers();
   if ("error" in result) {
     return (
-      <main className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-muted-foreground">
+      <main className="max-w-lg py-8 text-sm text-muted-foreground">
         {result.error}
       </main>
     );

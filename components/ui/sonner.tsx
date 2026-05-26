@@ -20,6 +20,8 @@ export function Toaster({ ...props }: ToasterProps) {
           toast:
             "group toast group-[.toaster]:glass-surface-strong group-[.toaster]:rounded-xl group-[.toaster]:text-foreground group-[.toaster]:shadow-glass",
           description: "group-[.toast]:text-muted-foreground",
+          success:
+            "group-[.toast]:border-[hsl(var(--dos-glow)/0.35)] group-[.toast]:bg-[hsl(var(--dos-glow)/0.12)]",
           actionButton:
             "group-[.toast]:bg-brand-gradient group-[.toast]:text-white group-[.toast]:rounded-md",
           cancelButton:

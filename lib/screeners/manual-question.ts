@@ -15,7 +15,12 @@ export const MANUAL_QUESTION_TYPE_OPTIONS = (
 export type QuestionOptionFormRow = {
   text: string;
   terminate: boolean;
+  logicNote: string;
 };
+
+export function emptyQuestionOptionRow(): QuestionOptionFormRow {
+  return { text: "", terminate: false, logicNote: "" };
+}
 
 export function questionTypeHasOptions(
   type: QuestionLibraryType | null | undefined,
@@ -27,35 +32,16 @@ export function normalizeManualAnswerOptions(
   options: QuestionOptionFormRow[],
 ): QuestionAnswerOption[] {
   return options
-    .map((row) => ({
-      text: row.text.trim(),
-      ...(row.terminate ? { terminate: true } : {}),
-    }))
+    .map((row) => {
+      const text = row.text.trim();
+      const logicNote = row.logicNote.trim();
+      return {
+        text,
+        ...(row.terminate ? { terminate: true } : {}),
+        ...(logicNote ? { logicNote } : {}),
+      };
+    })
     .filter((opt) => opt.text.length > 0);
-}
-
-/** Keep terminate flags from library options when the user edits option text. */
-export function mergeAnswerOptionsPreservingMetadata(
-  optionRows: QuestionOptionFormRow[],
-  previous: QuestionAnswerOption[],
-): QuestionAnswerOption[] {
-  const normalized = normalizeManualAnswerOptions(optionRows);
-
-  return normalized.map((opt, index) => {
-    const row = optionRows.filter((r) => r.text.trim()).at(index);
-    if (row?.terminate) {
-      return { ...opt, terminate: true };
-    }
-    const prevByIndex = previous[index];
-    if (prevByIndex?.text.trim() === opt.text && prevByIndex.terminate) {
-      return { ...opt, terminate: true };
-    }
-    const prevByText = previous.find((p) => p.text.trim() === opt.text);
-    if (prevByText?.terminate) {
-      return { ...opt, terminate: true };
-    }
-    return opt;
-  });
 }
 
 export function toQuestionLibraryType(
@@ -76,11 +62,9 @@ export function screenerQuestionToFormState(question: ScreenerQuestion): {
       ? question.answerOptions.map((o) => ({
           text: o.text,
           terminate: Boolean(o.terminate),
+          logicNote: o.logicNote ?? "",
         }))
-      : [
-          { text: "", terminate: false },
-          { text: "", terminate: false },
-        ];
+      : [emptyQuestionOptionRow(), emptyQuestionOptionRow()];
 
   return {
     questionText: question.questionText,

@@ -40,11 +40,11 @@ function LibraryQuestionRow({
   const categoryLabel = CATEGORY_LABELS[question.category] ?? question.category;
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 dark:border-border dark:bg-muted/30">
+    <li className="rounded-lg border border-border/80 bg-[hsl(var(--workspace-surface))] p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-1">
-            <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-gray-200 dark:bg-card dark:ring-border">
+            <span className="rounded bg-[hsl(var(--workspace-panel))] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/80">
               {typeLabel}
             </span>
             <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 ring-1 ring-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-400/30">
@@ -132,7 +132,7 @@ export function ScreenerEditorLibraryPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 border-b border-gray-200 p-3 dark:border-border">
+      <div className="shrink-0 space-y-3 border-b border-border/80 p-3">
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -158,7 +158,7 @@ export function ScreenerEditorLibraryPanel({
                 "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
                 categoryFilter === filter.id
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-muted-foreground hover:bg-gray-200 hover:text-foreground dark:bg-muted dark:hover:bg-muted/80",
+                  : "bg-[hsl(var(--workspace-surface))] text-muted-foreground hover:bg-[hsl(var(--workspace-surface))]/80 hover:text-foreground",
               )}
             >
               {filter.label}

@@ -1,63 +1,87 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
-import { ComingSoonPanel } from "@/components/screener-editor/coming-soon-panel";
+import { ScreenerEditorAiChatPanel } from "@/components/screener-editor/screener-editor-ai-chat-panel";
 import { ScreenerEditorLibraryPanel } from "@/components/screener-editor/screener-editor-library-panel";
+import { ScreenerEditorProjectSpecsPanel } from "@/components/screener-editor/screener-editor-project-specs-panel";
 import { ScreenerEditorQuestionPropertiesPanel } from "@/components/screener-editor/screener-editor-question-properties-panel";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
+import type { ProjectSpecs } from "@/lib/projects/project-specs";
+import type { ScreenerEditorAiChatState } from "@/lib/screeners/ai-chat/editor-chat-state";
+import type { ScreenerQuestionAddedOptions } from "@/lib/screeners/ai-chat/editor-chat-state";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
+import type { ScreenerWithProject } from "@/lib/screeners/types";
 import { cn } from "@/lib/utils";
 
-const BROWSER_TABS = [
-  { id: "library", label: "Library" },
+export const BROWSER_TABS = [
+  { id: "specs", label: "Project specs" },
+  { id: "library", label: "Question library" },
   { id: "ai", label: "AI Chat" },
-  { id: "search", label: "Search" },
 ] as const;
 
-type BrowserTab = (typeof BROWSER_TABS)[number]["id"];
+export type ScreenerEditorBrowserTab = (typeof BROWSER_TABS)[number]["id"];
 
 export function ScreenerEditorRightPanel({
-  screenerId,
+  screener,
+  projectSpecs,
+  onProjectSpecsChange,
   libraryQuestions,
   screenerQuestions,
   selectedQuestion,
+  browserTab: browserTabProp,
+  onBrowserTabChange,
+  aiChatState,
+  onAiChatStateChange,
   onQuestionAdded,
   onQuestionUpdated,
   onDeselectQuestion,
 }: {
-  screenerId: string;
+  screener: ScreenerWithProject;
+  projectSpecs: ProjectSpecs;
+  onProjectSpecsChange: (specs: ProjectSpecs) => void;
   libraryQuestions: QuestionLibraryItem[];
   screenerQuestions: ScreenerQuestion[];
   selectedQuestion: ScreenerQuestion | null;
-  onQuestionAdded: (question: ScreenerQuestion) => void;
+  browserTab?: ScreenerEditorBrowserTab;
+  onBrowserTabChange?: (tab: ScreenerEditorBrowserTab) => void;
+  aiChatState: ScreenerEditorAiChatState;
+  onAiChatStateChange: Dispatch<SetStateAction<ScreenerEditorAiChatState>>;
+  onQuestionAdded: (
+    question: ScreenerQuestion,
+    options?: ScreenerQuestionAddedOptions,
+  ) => void;
   onQuestionUpdated: (question: ScreenerQuestion) => void;
   onDeselectQuestion: () => void;
 }) {
-  const [browserTab, setBrowserTab] = useState<BrowserTab>("library");
+  const [browserTabInternal, setBrowserTabInternal] =
+    useState<ScreenerEditorBrowserTab>("specs");
+  const browserTab = browserTabProp ?? browserTabInternal;
+  const setBrowserTab = onBrowserTabChange ?? setBrowserTabInternal;
 
   if (selectedQuestion) {
     return (
-      <aside className="flex w-80 shrink-0 flex-col border-l border-gray-200 bg-white dark:border-border dark:bg-card">
+      <aside className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm">
         <ScreenerEditorQuestionPropertiesPanel
-          screenerId={screenerId}
+          screenerId={screener.id}
+          markets={screener.markets}
           question={selectedQuestion}
           onClose={onDeselectQuestion}
           onQuestionUpdated={onQuestionUpdated}
+          onBackToAiChat={
+            browserTab === "ai" ? onDeselectQuestion : undefined
+          }
         />
       </aside>
     );
   }
 
-  const activeLabel =
-    BROWSER_TABS.find((t) => t.id === browserTab)?.label ?? "Library";
-
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-gray-200 bg-white dark:border-border dark:bg-card">
+    <aside className="flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden border-l border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm">
       <div
         role="tablist"
         aria-label="Editor tools"
-        className="flex shrink-0 border-b border-gray-200 dark:border-border"
+        className="flex shrink-0 border-b border-border/80"
       >
         {BROWSER_TABS.map((tab) => (
           <button
@@ -66,28 +90,42 @@ export function ScreenerEditorRightPanel({
             role="tab"
             aria-selected={browserTab === tab.id}
             onClick={() => setBrowserTab(tab.id)}
+            title={tab.label}
             className={cn(
-              "flex-1 border-b-2 px-2 py-3 text-xs font-semibold transition",
+              "min-w-0 flex-1 border-b-2 px-1 py-3 text-[10px] font-semibold leading-tight transition",
               browserTab === tab.id
                 ? "border-blue-600 text-blue-700 dark:border-primary dark:text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {tab.label}
+            <span className="line-clamp-2">{tab.label}</span>
           </button>
         ))}
       </div>
 
       <div role="tabpanel" className="flex min-h-0 flex-1 flex-col">
-        {browserTab === "library" ? (
+        {browserTab === "specs" ? (
+          <ScreenerEditorProjectSpecsPanel
+            projectId={screener.projectId}
+            screenerId={screener.id}
+            specs={projectSpecs}
+            onSpecsSaved={onProjectSpecsChange}
+          />
+        ) : browserTab === "library" ? (
           <ScreenerEditorLibraryPanel
-            screenerId={screenerId}
+            screenerId={screener.id}
             libraryQuestions={libraryQuestions}
             screenerQuestions={screenerQuestions}
             onQuestionAdded={onQuestionAdded}
           />
         ) : (
-          <ComingSoonPanel label={activeLabel} />
+          <ScreenerEditorAiChatPanel
+            screener={screener}
+            screenerQuestions={screenerQuestions}
+            chatState={aiChatState}
+            onChatStateChange={onAiChatStateChange}
+            onQuestionAdded={onQuestionAdded}
+          />
         )}
       </div>
     </aside>

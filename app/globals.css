@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hypertext — place .woff2 files in public/fonts/hypertext/ (see README there) */
+@font-face {
+  font-family: "Hypertext";
+  src: url("/fonts/hypertext/Hypertext-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hypertext";
+  src: url("/fonts/hypertext/Hypertext-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hypertext";
+  src: url("/fonts/hypertext/Hypertext-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hypertext Display";
+  src: url("/fonts/hypertext/Hypertext-DisplayMedium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Day One Strategy + DOS workspace tokens */
 @layer base {
   :root {
@@ -12,8 +45,8 @@
     --status-success: 152 47% 35%;
     --status-warning: 32 75% 45%;
 
-    --workspace-surface: 60 9% 97%;
-    --workspace-panel: 40 20% 96%;
+    --workspace-surface: 40 8% 90%;
+    --workspace-panel: 0 0% 100%;
 
     --background: 60 9% 97%;
     --foreground: var(--dos-navy);
@@ -122,10 +155,21 @@
     color: hsl(var(--foreground));
     background-color: hsl(var(--background));
     min-height: 100vh;
-    font-family: var(--font-inter), var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-hypertext), Arial, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), var(--font-hypertext), Arial, sans-serif;
+    line-height: 0.9;
+    letter-spacing: 0.01em;
   }
 
   ::selection {
@@ -164,8 +208,8 @@
 
   .glass-input:focus,
   .glass-input:focus-visible {
-    border-color: hsl(var(--ring) / 0.45);
-    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.12);
+    border-color: hsl(var(--dos-navy) / 0.35);
+    box-shadow: 0 0 0 3px hsl(var(--dos-navy) / 0.1);
     outline: none;
   }
 
@@ -179,6 +223,28 @@
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
+  }
+
+  .font-display {
+    font-family: var(--font-display), var(--font-hypertext), Arial, sans-serif;
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+  }
+
+  .table-head-row {
+    @apply border-b border-border/40 bg-background/30 text-left backdrop-blur;
+  }
+
+  .table-head-cell {
+    @apply text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+
+  .accent-glow {
+    color: hsl(var(--dos-glow));
+  }
+
+  .accent-teal {
+    color: hsl(var(--dos-teal));
   }
 }
 
@@ -210,6 +276,19 @@
   select {
     color: hsl(var(--foreground));
     caret-color: hsl(var(--foreground));
+  }
+
+  select {
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--input));
+    background-color: hsl(var(--card));
+    box-shadow: 0 1px 2px hsl(var(--dos-navy) / 0.04);
+  }
+
+  select:focus-visible {
+    outline: none;
+    border-color: hsl(var(--dos-navy) / 0.35);
+    box-shadow: 0 0 0 3px hsl(var(--dos-navy) / 0.1);
   }
 
   input::placeholder,
@@ -244,6 +323,19 @@ body:has([data-workspace-shell]) [data-app-shell] {
   max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Workspace shell: stronger surface vs card separation */
+[data-workspace-shell] {
+  --border: 0 0% 84%;
+  --muted: 40 10% 92%;
+}
+
+.dark [data-workspace-shell] {
+  --workspace-surface: 251 38% 7%;
+  --workspace-panel: 222 30% 13%;
+  --border: 222 22% 24%;
+  --muted: 222 24% 14%;
 }
 
 @media (prefers-reduced-motion: reduce) {

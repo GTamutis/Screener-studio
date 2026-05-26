@@ -14,7 +14,6 @@ import {
   Mail,
   Pencil,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -27,6 +26,7 @@ import {
 import type { InvitelySessionSummary } from "@/lib/invitely/types";
 import type { ProjectSummary } from "@/lib/projects/types";
 
+import { FilterSelect } from "@/components/ui/filter-select";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { EmptyState } from "@/components/ui/glass/empty-state";
@@ -437,7 +437,7 @@ export function InvitelyDashboard({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4" />
+                    <Mail className="h-4 w-4" />
                     Create session
                   </>
                 )}
@@ -478,20 +478,22 @@ export function InvitelyDashboard({
               ) : (
                 <>
                   <div className="space-y-1.5">
-                    <Label htmlFor="workspace-project-pick">Project</Label>
-                    <select
-                      id="workspace-project-pick"
-                      value={selectedWorkspaceProjectId}
-                      onChange={(e) => applyWorkspaceProject(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background/80 px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    >
-                      <option value="">Choose a project…</option>
-                      {sortedProjects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.projectName} · {p.clientName} ({p.projectNumber})
-                        </option>
-                      ))}
-                    </select>
+                    <Label id="workspace-project-pick-label">Project</Label>
+                    <FilterSelect
+                      className="w-full"
+                      value={selectedWorkspaceProjectId || "__none__"}
+                      onValueChange={(v) =>
+                        applyWorkspaceProject(v === "__none__" ? "" : v)
+                      }
+                      aria-label="Choose a workspace project"
+                      options={[
+                        { value: "__none__", label: "Choose a project…" },
+                        ...sortedProjects.map((p) => ({
+                          value: p.id,
+                          label: `${p.projectName} · ${p.clientName} (${p.projectNumber})`,
+                        })),
+                      ]}
+                    />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     Picking a project fills the New session fields above. Add a
@@ -520,6 +522,7 @@ export function InvitelyDashboard({
           {sorted.length === 0 ? (
             <EmptyState
               icon={Mail}
+              iconVariant="flat"
               title="No sessions yet"
               description="Create one with the form on the left (or above on small screens). Each session gets its own password-protected page."
             />

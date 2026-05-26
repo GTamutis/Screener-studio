@@ -1,56 +1,12 @@
-import Link from "next/link";
 import { AlertTriangle, Globe } from "lucide-react";
 
 import { listProjects } from "@/app/actions/projects";
-import type { ProjectSummary } from "@/lib/projects/types";
-
+import { ProjectsList } from "@/components/projects/projects-list";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/glass/empty-state";
-
-function ProjectCard({ project }: { project: ProjectSummary }) {
-  return (
-    <Link
-      href={`/projects/${project.id}`}
-      className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-    >
-      <GlassCard interactive className="flex h-full flex-col p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
-              {project.projectName}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {project.clientName}
-              </span>
-              <span className="mx-1.5 text-border">·</span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {project.projectNumber}
-              </span>
-            </p>
-          </div>
-          <Badge variant="gradient" className="shrink-0">
-            <Globe className="mr-1 h-3 w-3" />
-            {project.markets.length}
-          </Badge>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {(project.markets ?? []).map((m) => (
-            <span
-              key={m}
-              className="rounded-full bg-brand-gradient-soft px-2.5 py-0.5 text-[11px] font-medium text-foreground/80 ring-1 ring-inset ring-primary/15"
-            >
-              {m}
-            </span>
-          ))}
-        </div>
-      </GlassCard>
-    </Link>
-  );
-}
 
 export default async function ProjectsPage() {
   let result: Awaited<ReturnType<typeof listProjects>>;
@@ -118,13 +74,7 @@ export default async function ProjectsPage() {
           description='Create a project with the "New Project" button. You will connect Screener Studio, Invitely, and future tools in upcoming updates.'
         />
       ) : (
-        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <li key={p.id}>
-              <ProjectCard project={p} />
-            </li>
-          ))}
-        </ul>
+        <ProjectsList projects={projects} />
       )}
     </div>
   );

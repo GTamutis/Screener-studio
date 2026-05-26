@@ -53,7 +53,6 @@ export function AddManualQuestionSheet({
         screenerId,
         questionText: values.questionText,
         questionType: values.questionType,
-        notes: values.notes,
         answerOptions: showOptions ? values.answerOptions : undefined,
       });
 

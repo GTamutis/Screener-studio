@@ -7,6 +7,10 @@ import { WorkspacePlacecards } from "@/components/workspace/workspace-placecards
 import { WorkspaceProjectsTable } from "@/components/workspace/workspace-projects-table";
 import { WorkspaceRightPanel } from "@/components/workspace/workspace-right-panel";
 import {
+  WorkspaceStagger,
+  WorkspaceStaggerItem,
+} from "@/components/workspace/workspace-stagger";
+import {
   formatUkLongDate,
   greetingForHour,
 } from "@/lib/format-relative-time";
@@ -42,42 +46,54 @@ export default async function WorkspacePage() {
   ).sort((a, b) => a.localeCompare(b));
 
   return (
-    <div className="px-6 py-8 lg:px-8">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
-        <div className="min-w-0 flex-1 space-y-8">
-          <header className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[26px]">
-              {greetingForHour()}, {firstName}.
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {formatUkLongDate()}
-              {attentionCount > 0
-                ? ` — ${attentionCount} project${attentionCount === 1 ? "" : "s"} need your attention`
-                : null}
-            </p>
-            <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Your dedicated Day One Strategy workspace for projects, screeners,
-              and field tools — everything you need to move work forward in one
-              place.
-            </p>
-          </header>
+    <div className="flex w-full max-w-[1400px] flex-col gap-8 xl:flex-row xl:items-start xl:gap-10">
+        <WorkspaceStagger className="min-w-0 flex-1 space-y-8">
+          <WorkspaceStaggerItem>
+            <header className="space-y-2">
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground sm:text-[26px]">
+                {greetingForHour()},{" "}
+                <span className="text-[hsl(var(--dos-navy))] dark:text-foreground">
+                  {firstName}
+                </span>
+                .
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {formatUkLongDate()}
+                {attentionCount > 0
+                  ? ` — ${attentionCount} project${attentionCount === 1 ? "" : "s"} need your attention`
+                  : null}
+              </p>
+              <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Your Day One Strategy workspace for projects, screeners, and
+                field tools — everything you need to move work forward in one
+                place.
+              </p>
+            </header>
+          </WorkspaceStaggerItem>
 
-          <WorkspaceMetricCards metrics={metrics} />
+          <WorkspaceStaggerItem>
+            <WorkspaceMetricCards metrics={metrics} />
+          </WorkspaceStaggerItem>
 
-          <WorkspacePlacecards />
+          <WorkspaceStaggerItem>
+            <WorkspacePlacecards />
+          </WorkspaceStaggerItem>
 
-          <WorkspaceProjectsTable projects={projects} />
+          <WorkspaceStaggerItem>
+            <WorkspaceProjectsTable projects={projects} />
+          </WorkspaceStaggerItem>
 
-          <WorkspaceNewsFeed
-            items={industryNews.items}
-            failedSources={industryNews.failedSources}
-            sourceCounts={industryNews.sourceCounts}
-            projectClientNames={projectClientNames}
-          />
-        </div>
+          <WorkspaceStaggerItem>
+            <WorkspaceNewsFeed
+              items={industryNews.items}
+              failedSources={industryNews.failedSources}
+              sourceCounts={industryNews.sourceCounts}
+              projectClientNames={projectClientNames}
+            />
+          </WorkspaceStaggerItem>
+        </WorkspaceStagger>
 
         <WorkspaceRightPanel className="xl:sticky xl:top-8 xl:max-h-[calc(100dvh-4rem)] xl:overflow-y-auto" />
-      </div>
     </div>
   );
 }

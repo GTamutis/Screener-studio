@@ -9,6 +9,7 @@ export interface FmvEntry {
   hourlyRateUsd: number;
   hourlyRateGbp: number;
   hourlyRateEur: number;
+  effectiveDate: string;
   fxRateDate: string;
   createdAt: string;
 }

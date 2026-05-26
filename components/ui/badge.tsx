@@ -15,10 +15,11 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive/15 text-destructive backdrop-blur",
         success:
-          "border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 backdrop-blur",
+          "border-transparent bg-[hsl(var(--status-success)/0.14)] text-[hsl(var(--status-success))] backdrop-blur",
         warning:
-          "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300 backdrop-blur",
-        info: "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300 backdrop-blur",
+          "border-transparent bg-[hsl(var(--status-warning)/0.14)] text-[hsl(var(--status-warning))] backdrop-blur",
+        info: "border-transparent bg-[hsl(var(--dos-blue)/0.12)] text-[hsl(var(--dos-blue))] backdrop-blur dark:text-[hsl(221_70%_62%)]",
+        glow: "border-transparent bg-[hsl(var(--dos-glow)/0.22)] text-[hsl(251_59%_22%)] dark:text-[hsl(var(--dos-glow))] backdrop-blur",
         outline: "border-border/60 text-foreground",
         gradient:
           "border-transparent bg-brand-gradient-soft text-foreground ring-1 ring-inset ring-primary/20 backdrop-blur",

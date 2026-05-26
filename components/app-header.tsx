@@ -94,16 +94,10 @@ export function AppHeader({
                         {active ? (
                           <span
                             aria-hidden
-                            className="absolute inset-0 -z-10 rounded-lg bg-brand-gradient-soft ring-1 ring-inset ring-primary/20"
+                            className="absolute inset-0 -z-10 rounded-lg bg-brand-gradient-soft"
                           />
                         ) : null}
                         <span className="relative">{label}</span>
-                        {active ? (
-                          <span
-                            aria-hidden
-                            className="absolute -bottom-[10px] left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-brand-gradient"
-                          />
-                        ) : null}
                       </Link>
                     );
                   })}

@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { Label } from "@/components/ui/label";
 import type { ProjectSummary } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
@@ -199,19 +200,17 @@ export function NewScreenerStudioDialog({
                     one.
                   </p>
                 ) : (
-                  <select
-                    id={`${formId}-project-id`}
+                  <FilterSelect
+                    className="w-full"
                     value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    onValueChange={setSelectedProjectId}
                     disabled={pending}
-                    className="glass-input flex h-10 w-full rounded-lg px-3 py-2 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {projectOptionLabel(p)}
-                      </option>
-                    ))}
-                  </select>
+                    aria-label="Select project"
+                    options={projects.map((p) => ({
+                      value: p.id,
+                      label: projectOptionLabel(p),
+                    }))}
+                  />
                 )}
               </div>
             ) : (

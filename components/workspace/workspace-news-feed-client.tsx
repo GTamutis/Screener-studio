@@ -1,17 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ExternalLink, Newspaper } from "lucide-react";
+import { ChevronDown, ExternalLink, Newspaper, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { augmentNewsItemsWithClients } from "@/lib/workspace/augment-news-items";
 import type {
   IndustryNewsItem,
   IndustryNewsSourceCount,
 } from "@/lib/workspace/industry-news-types";
+import { FilterSelect } from "@/components/ui/filter-select";
+import { workspaceCardClassName } from "@/lib/form-classes";
 import { cn } from "@/lib/utils";
 
 const VISIBLE_ROWS = 4;
@@ -85,9 +92,6 @@ export function WorkspaceNewsFeedClient({
   const isEmpty = enrichedItems.length === 0;
   const showExpandControl = filteredItems.length > VISIBLE_ROWS;
 
-  const selectClass =
-    "h-8 rounded-md border border-border bg-card px-2.5 text-xs text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring";
-
   return (
     <section className={cn("space-y-4", className)}>
       <div className="flex flex-wrap items-center gap-2">
@@ -98,7 +102,7 @@ export function WorkspaceNewsFeedClient({
       </div>
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center">
+        <div className={cn(workspaceCardClassName, "px-5 py-8 text-center")}>
           <p className="text-sm text-muted-foreground">
             Headlines are unavailable right now. Please try again later.
           </p>
@@ -120,50 +124,48 @@ export function WorkspaceNewsFeedClient({
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Source
-              <select
-                className={selectClass}
+              <FilterSelect
+                size="sm"
                 value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
+                onValueChange={setSourceFilter}
                 aria-label="Filter by source"
-              >
-                <option value="all">All sources</option>
-                {sources.map((source) => (
-                  <option key={source} value={source}>
-                    {source}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "all", label: "All sources" },
+                  ...sources.map((source) => ({ value: source, label: source })),
+                ]}
+              />
             </label>
 
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Sort
-              <select
-                className={selectClass}
+              <FilterSelect
+                size="sm"
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                onValueChange={(v) => setSortOrder(v as SortOrder)}
                 aria-label="Sort by published date"
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
+                options={[
+                  { value: "newest", label: "Newest first" },
+                  { value: "oldest", label: "Oldest first" },
+                ]}
+              />
             </label>
 
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               Company
-              <select
-                className={selectClass}
+              <FilterSelect
+                size="sm"
                 value={companyFilter}
-                onChange={(e) => setCompanyFilter(e.target.value)}
+                onValueChange={setCompanyFilter}
                 aria-label="Filter by company mentioned"
                 disabled={allCompanies.length === 0}
-              >
-                <option value="all">All companies</option>
-                {allCompanies.map((company) => (
-                  <option key={company} value={company}>
-                    {company}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "all", label: "All companies" },
+                  ...allCompanies.map((company) => ({
+                    value: company,
+                    label: company,
+                  })),
+                ]}
+              />
             </label>
 
             {filteredItems.length !== enrichedItems.length ? (
@@ -180,14 +182,19 @@ export function WorkspaceNewsFeedClient({
           </div>
 
           {filteredItems.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card px-5 py-6 text-center text-sm text-muted-foreground">
+            <div
+              className={cn(
+                workspaceCardClassName,
+                "px-5 py-6 text-center text-sm text-muted-foreground",
+              )}
+            >
               No articles match these filters.
             </div>
           ) : (
             <div className="space-y-2">
               <div
                 className={cn(
-                  "overflow-hidden rounded-2xl border border-border bg-card",
+                  cn(workspaceCardClassName, "overflow-hidden"),
                   !expanded && showExpandControl && "overflow-y-auto",
                 )}
                 style={
@@ -197,53 +204,85 @@ export function WorkspaceNewsFeedClient({
                 }
               >
                 <ul className="divide-y divide-border">
-                  {filteredItems.map((item) => (
-                    <li key={item.id}>
-                      <Link
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex gap-3 px-5 py-4 transition hover:bg-secondary/50"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground group-hover:text-primary">
-                            {item.title}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {item.source}
-                            <span className="mx-1.5 text-border">·</span>
-                            {formatRelativeTime(item.publishedAt)}
-                          </p>
-                          {item.companies.length > 0 ? (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {item.companies.slice(0, 4).map((company) => (
-                                <Badge
-                                  key={company}
-                                  variant="secondary"
-                                  className="px-2 py-0 text-[10px] font-medium"
-                                >
-                                  {company}
-                                </Badge>
-                              ))}
-                              {item.companies.length > 4 ? (
-                                <Badge
-                                  variant="outline"
-                                  className="px-2 py-0 text-[10px] font-medium"
-                                >
-                                  +{item.companies.length - 4}
-                                </Badge>
-                              ) : null}
-                            </div>
-                          ) : null}
+                  {filteredItems.map((item) => {
+                    const outreachHref = `/workspace/industry-news/outreach/${encodeURIComponent(item.id)}`;
+
+                    return (
+                      <li key={item.id} className="flex items-stretch">
+                        <Link
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex min-w-0 flex-1 gap-3 px-5 py-4 transition hover:bg-secondary/50"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground group-hover:text-primary">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {item.source}
+                              <span className="mx-1.5 text-border">·</span>
+                              {formatRelativeTime(item.publishedAt)}
+                            </p>
+                            {item.companies.length > 0 ? (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {item.companies.slice(0, 4).map((company) => (
+                                  <Badge
+                                    key={company}
+                                    variant="secondary"
+                                    className="px-2 py-0 text-[10px] font-medium"
+                                  >
+                                    {company}
+                                  </Badge>
+                                ))}
+                                {item.companies.length > 4 ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="px-2 py-0 text-[10px] font-medium"
+                                  >
+                                    +{item.companies.length - 4}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                          <ExternalLink
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100"
+                            aria-hidden
+                          />
+                          <span className="sr-only">(opens in new tab)</span>
+                        </Link>
+                        <div className="flex shrink-0 items-center border-l border-border/60 px-2 sm:px-3">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                asChild
+                              >
+                                <Link href={outreachHref}>
+                                  <Sparkles
+                                    className="h-3.5 w-3.5 shrink-0"
+                                    aria-hidden
+                                  />
+                                  <span className="hidden sm:inline">
+                                    Outreach
+                                  </span>
+                                  <span className="sr-only sm:hidden">
+                                    Create outreach with AI
+                                  </span>
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              Create outreach with AI
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
-                        <ExternalLink
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100"
-                          aria-hidden
-                        />
-                        <span className="sr-only">(opens in new tab)</span>
-                      </Link>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 

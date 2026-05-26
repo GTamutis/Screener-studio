@@ -5,12 +5,15 @@ import { revalidatePath } from "next/cache";
 import { getScreenerById } from "@/app/actions/screeners";
 import {
   cloneAnswerOptions,
-  mergeAnswerOptionsPreservingMetadata,
   normalizeManualAnswerOptions,
   questionTypeHasOptions,
   type ManualScreenerQuestionType,
   type QuestionOptionFormRow,
 } from "@/lib/screeners/manual-question";
+import {
+  quotaConfigForSave,
+  type ScreenerQuestionQuotaConfig,
+} from "@/lib/screeners/question-quotas";
 import type { QuestionAnswerOption } from "@/lib/question-library/types";
 import {
   mapScreenerQuestion,
@@ -36,10 +39,12 @@ function editorPath(screenerId: string) {
 
 function schemaHint(errorMessage: string): string | null {
   if (
-    /question_type|answer_options|is_customized|notes/i.test(errorMessage) &&
+    /question_type|answer_options|is_customized|notes|quota_config/i.test(
+      errorMessage,
+    ) &&
     /column|schema cache/i.test(errorMessage)
   ) {
-    return "Database schema is out of date. Run migrations 011–013 in the Supabase SQL editor, then try again.";
+    return "Database schema is out of date. Run migrations 011–014 in the Supabase SQL editor, then try again.";
   }
   return null;
 }
@@ -49,6 +54,7 @@ type ManualQuestionPayload = {
   questionType: ManualScreenerQuestionType;
   notes?: string;
   answerOptions?: QuestionOptionFormRow[];
+  quotaConfig?: ScreenerQuestionQuotaConfig | null;
 };
 
 function validateManualQuestionPayload(
@@ -111,11 +117,35 @@ async function nextScreenerQuestionPosition(
   return ((lastQuestion?.position as number | undefined) ?? 0) + 1;
 }
 
-async function renumberScreenerQuestions(
+/** Avoid unique (screener_id, position) collisions while rewriting order. */
+async function applyScreenerQuestionOrder(
   screenerId: string,
+  orderedQuestionIds: string[],
 ): Promise<ScreenerQuestion[]> {
   const supabase = createAdminClient();
-  const { data: remaining, error: fetchError } = await supabase
+  const tempOffset = 10_000;
+
+  for (let index = 0; index < orderedQuestionIds.length; index++) {
+    const { error } = await supabase
+      .from("screener_questions")
+      .update({ position: tempOffset + index })
+      .eq("id", orderedQuestionIds[index])
+      .eq("screener_id", screenerId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  for (let index = 0; index < orderedQuestionIds.length; index++) {
+    const { error } = await supabase
+      .from("screener_questions")
+      .update({ position: index + 1 })
+      .eq("id", orderedQuestionIds[index])
+      .eq("screener_id", screenerId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  const { data, error: fetchError } = await supabase
     .from("screener_questions")
     .select(SCREENER_QUESTION_SELECT)
     .eq("screener_id", screenerId)
@@ -123,22 +153,27 @@ async function renumberScreenerQuestions(
 
   if (fetchError) throw new Error(fetchError.message);
 
-  const rows = (remaining ?? []) as DbScreenerQuestionRow[];
+  return (data ?? []).map((row) =>
+    mapScreenerQuestion(row as DbScreenerQuestionRow),
+  );
+}
 
-  for (let index = 0; index < rows.length; index++) {
-    const newPosition = index + 1;
-    if (rows[index].position === newPosition) continue;
+async function renumberScreenerQuestions(
+  screenerId: string,
+): Promise<ScreenerQuestion[]> {
+  const supabase = createAdminClient();
+  const { data: remaining, error: fetchError } = await supabase
+    .from("screener_questions")
+    .select("id")
+    .eq("screener_id", screenerId)
+    .order("position", { ascending: true });
 
-    const { error: updateError } = await supabase
-      .from("screener_questions")
-      .update({ position: newPosition })
-      .eq("id", rows[index].id);
+  if (fetchError) throw new Error(fetchError.message);
 
-    if (updateError) throw new Error(updateError.message);
-    rows[index].position = newPosition;
-  }
+  const orderedIds = (remaining ?? []).map((row) => row.id as string);
+  if (orderedIds.length === 0) return [];
 
-  return rows.map((row) => mapScreenerQuestion(row));
+  return applyScreenerQuestionOrder(screenerId, orderedIds);
 }
 
 export async function listScreenerQuestions(
@@ -239,6 +274,23 @@ export async function addManualScreenerQuestion(
 ): Promise<
   { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
 > {
+  return insertScreenerQuestionWithSource(input, "manual");
+}
+
+export async function addAiDraftScreenerQuestion(
+  input: { screenerId: string } & ManualQuestionPayload,
+): Promise<
+  { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
+> {
+  return insertScreenerQuestionWithSource(input, "ai_draft");
+}
+
+async function insertScreenerQuestionWithSource(
+  input: { screenerId: string } & ManualQuestionPayload,
+  source: "manual" | "ai_draft",
+): Promise<
+  { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
+> {
   try {
     assertUuid(input.screenerId, "screener id");
     await getScreenerById(input.screenerId);
@@ -258,7 +310,7 @@ export async function addManualScreenerQuestion(
         question_type: input.questionType,
         answer_options: validated.answerOptions,
         notes: validated.notes,
-        source: "manual",
+        source,
         is_locked: false,
         library_question_id: null,
         is_customized: false,
@@ -275,10 +327,11 @@ export async function addManualScreenerQuestion(
       question: mapScreenerQuestion(inserted as DbScreenerQuestionRow),
     };
   } catch (e) {
+    const label =
+      source === "ai_draft" ? "AI draft question" : "manual question";
     return {
       ok: false,
-      error:
-        e instanceof Error ? e.message : "Could not add manual question.",
+      error: e instanceof Error ? e.message : `Could not add ${label}.`,
     };
   }
 }
@@ -312,15 +365,14 @@ export async function updateScreenerQuestion(
 
     let answerOptionsToSave = validated.answerOptions;
     if (questionTypeHasOptions(input.questionType) && input.answerOptions) {
-      const previous = (existing.answer_options ?? []) as QuestionAnswerOption[];
-      answerOptionsToSave =
-        previous.length > 0
-          ? mergeAnswerOptionsPreservingMetadata(
-              input.answerOptions,
-              previous,
-            )
-          : normalizeManualAnswerOptions(input.answerOptions);
+      answerOptionsToSave = normalizeManualAnswerOptions(input.answerOptions);
     }
+
+    const optionCount = answerOptionsToSave?.length ?? 0;
+    const quotaConfigToSave = quotaConfigForSave(
+      input.quotaConfig ?? { enabled: false, optionTargets: [] },
+      optionCount,
+    );
 
     const { data: updated, error: updateError } = await supabase
       .from("screener_questions")
@@ -329,6 +381,7 @@ export async function updateScreenerQuestion(
         question_type: input.questionType,
         answer_options: answerOptionsToSave,
         notes: validated.notes,
+        quota_config: quotaConfigToSave,
         is_customized: true,
       })
       .eq("id", input.questionId)
@@ -351,6 +404,70 @@ export async function updateScreenerQuestion(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Could not update question.",
+    };
+  }
+}
+
+export async function reorderScreenerQuestions(input: {
+  screenerId: string;
+  orderedQuestionIds: string[];
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    await getScreenerById(input.screenerId);
+
+    const orderedQuestionIds = input.orderedQuestionIds.map((id) => {
+      assertUuid(id, "question id");
+      return id;
+    });
+
+    if (orderedQuestionIds.length === 0) {
+      return { ok: true, questions: [] };
+    }
+
+    const unique = new Set(orderedQuestionIds);
+    if (unique.size !== orderedQuestionIds.length) {
+      return { ok: false, error: "Duplicate question ids in reorder list." };
+    }
+
+    const supabase = createAdminClient();
+    const { data: existing, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select("id")
+      .eq("screener_id", input.screenerId);
+
+    if (fetchError) return { ok: false, error: fetchError.message };
+
+    const existingIds = (existing ?? []).map((row) => row.id as string);
+    if (existingIds.length !== orderedQuestionIds.length) {
+      return {
+        ok: false,
+        error: "Reorder list must include every question in this screener.",
+      };
+    }
+
+    const existingSet = new Set(existingIds);
+    for (const id of orderedQuestionIds) {
+      if (!existingSet.has(id)) {
+        return { ok: false, error: "One or more questions do not belong to this screener." };
+      }
+    }
+
+    const questions = await applyScreenerQuestionOrder(
+      input.screenerId,
+      orderedQuestionIds,
+    );
+
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not reorder screener questions.",
     };
   }
 }

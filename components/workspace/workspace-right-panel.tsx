@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Copy, UserPlus } from "lucide-react";
 
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
+import { workspaceCardClassName } from "@/lib/form-classes";
 import { cn } from "@/lib/utils";
 
 type FieldHealthItem = {
@@ -39,14 +40,14 @@ export function WorkspaceRightPanel({ className }: { className?: string }) {
           <NewProjectDialog />
           <Link
             href="/projects"
-            className="flex h-10 items-center gap-2.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-secondary"
+            className="flex h-10 items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary"
           >
             <Copy className="h-4 w-4 text-muted-foreground" />
             Import from template
           </Link>
           <Link
             href="/workspace/users"
-            className="flex h-10 items-center gap-2.5 rounded-md border border-border bg-card px-3 text-sm font-medium text-foreground transition hover:bg-secondary"
+            className="flex h-10 items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm transition hover:bg-secondary"
           >
             <UserPlus className="h-4 w-4 text-muted-foreground" />
             Invite a team member
@@ -100,7 +101,7 @@ function PanelCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-[hsl(var(--workspace-panel))] p-5">
+    <div className={cn(workspaceCardClassName, "p-5")}>
       <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
         {title}
       </h3>

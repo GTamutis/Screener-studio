@@ -33,7 +33,7 @@ export function ScreenerEditorToolbar({
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 dark:border-border dark:bg-card">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/80 bg-[hsl(var(--workspace-panel))] px-4 shadow-sm">
       <div className="flex min-w-0 items-center gap-2 text-sm">
         <Link
           href="/screener-studio"
@@ -56,7 +56,7 @@ export function ScreenerEditorToolbar({
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 gap-1.5 border-gray-200"
+          className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
           disabled={saving}
           onClick={handleSave}
         >
@@ -72,7 +72,7 @@ export function ScreenerEditorToolbar({
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 gap-1.5 border-gray-200"
+          className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
           onClick={handleExport}
         >
           <Download className="h-4 w-4" />

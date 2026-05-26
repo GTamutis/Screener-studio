@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  emptyQuestionOptionRow,
   MANUAL_QUESTION_TYPE_OPTIONS,
   questionTypeHasOptions,
   type QuestionOptionFormRow,
@@ -23,8 +24,8 @@ export type QuestionEditorFormValues = {
 };
 
 const DEFAULT_OPTION_ROWS: QuestionOptionFormRow[] = [
-  { text: "", terminate: false },
-  { text: "", terminate: false },
+  emptyQuestionOptionRow(),
+  emptyQuestionOptionRow(),
 ];
 
 export function emptyQuestionEditorValues(): QuestionEditorFormValues {
@@ -179,7 +180,7 @@ export function QuestionEditorForm({
               patch({
                 answerOptions: [
                   ...values.answerOptions,
-                  { text: "", terminate: false },
+                  emptyQuestionOptionRow(),
                 ],
               })
             }
@@ -189,22 +190,6 @@ export function QuestionEditorForm({
           </Button>
         </fieldset>
       ) : null}
-
-      <div className="space-y-1.5">
-        <Label htmlFor={`${formId}-notes`}>Routing / criteria notes</Label>
-        <Textarea
-          id={`${formId}-notes`}
-          rows={3}
-          value={values.notes}
-          onChange={(e) => patch({ notes: e.target.value })}
-          placeholder="e.g. CONTINUE, TERMINATE, HOLD instructions for recruiters…"
-          disabled={disabled}
-          className="resize-y text-sm"
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Internal guidance for this screener copy (not shown to respondents).
-        </p>
-      </div>
     </div>
   );
 }

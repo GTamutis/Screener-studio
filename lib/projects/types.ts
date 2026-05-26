@@ -1,3 +1,5 @@
+import type { ProjectSpecs } from "@/lib/projects/project-specs";
+
 export interface ProjectSummary {
   id: string;
   clientName: string;
@@ -5,8 +7,11 @@ export interface ProjectSummary {
   projectName: string;
   markets: string[];
   createdAt: string;
+  ownerClerkUserId: string;
+  ownerDisplayName: string;
 }
 
-/** Full project row; same shape as summary today — extend here when the DB gains extra fields. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentional extension point vs ProjectSummary
-export interface Project extends ProjectSummary {}
+/** Full project row including screener design context for AI and editors. */
+export interface Project extends ProjectSummary {
+  projectSpecs: ProjectSpecs;
+}

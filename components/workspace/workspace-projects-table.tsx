@@ -6,6 +6,7 @@ import {
 } from "@/components/workspace/project-row-status";
 import type { ProjectSummary } from "@/lib/projects/types";
 import { formatRelativeTime } from "@/lib/format-relative-time";
+import { workspaceCardClassName } from "@/lib/form-classes";
 import { cn } from "@/lib/utils";
 
 function clientInitials(name: string): string {
@@ -25,7 +26,7 @@ export function WorkspaceProjectsTable({
   return (
     <section className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">
+        <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
           Recent projects
         </h2>
         <Link
@@ -36,21 +37,15 @@ export function WorkspaceProjectsTable({
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className={cn(workspaceCardClassName, "overflow-hidden")}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                  Project
-                </th>
-                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                  Client
-                </th>
-                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <tr className="table-head-row">
+                <th className="table-head-cell px-5 py-3">Project</th>
+                <th className="table-head-cell px-4 py-3">Client</th>
+                <th className="table-head-cell px-4 py-3">Status</th>
+                <th className="table-head-cell px-5 py-3 text-right">
                   Updated
                 </th>
               </tr>
@@ -75,14 +70,14 @@ export function WorkspaceProjectsTable({
                   return (
                     <tr
                       key={project.id}
-                      className="border-b border-border last:border-0 transition-colors hover:bg-secondary/40"
+                      className="group border-b border-border last:border-0 transition-colors hover:border-l-2 hover:border-l-[hsl(var(--dos-teal)/0.5)] hover:bg-[hsl(var(--dos-teal)/0.04)]"
                     >
                       <td className="px-5 py-4">
                         <Link
                           href={`/projects/${project.id}`}
-                          className="group block space-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="group/link block space-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          <span className="font-medium text-foreground group-hover:text-primary">
+                          <span className="font-medium text-foreground group-hover/link:text-primary">
                             {project.projectName}
                           </span>
                           <span className="block font-mono text-[11px] text-muted-foreground">
@@ -115,4 +110,3 @@ export function WorkspaceProjectsTable({
     </section>
   );
 }
-
