@@ -36,53 +36,103 @@ const PROPERTY_TABS = [
 
 type PropertyTab = (typeof PROPERTY_TABS)[number]["id"];
 
+export type ScreenerQuestionPropertiesDraft = {
+  values: QuestionEditorFormValues;
+  quotaConfig: ScreenerQuestionQuotaConfig;
+};
+
 export function ScreenerEditorQuestionPropertiesPanel({
+  formId,
   screenerId,
   markets,
   question,
+  draft,
   onClose,
   onBackToAiChat,
+  onDraftChange,
   onQuestionUpdated,
 }: {
+  formId?: string;
   screenerId: string;
   markets: string[];
   question: ScreenerQuestion;
+  draft?: ScreenerQuestionPropertiesDraft;
   onClose: () => void;
   onBackToAiChat?: () => void;
+  onDraftChange: (
+    questionId: string,
+    draft: ScreenerQuestionPropertiesDraft,
+  ) => void;
   onQuestionUpdated: (question: ScreenerQuestion) => void;
 }) {
-  const formId = useId();
+  const generatedFormId = useId();
+  const resolvedFormId = formId ?? generatedFormId;
   const [pending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<PropertyTab>("question");
   const [values, setValues] = useState<QuestionEditorFormValues>(() =>
-    screenerQuestionToFormState(question),
+    draft?.values ?? screenerQuestionToFormState(question),
   );
   const [quotaConfig, setQuotaConfig] = useState<ScreenerQuestionQuotaConfig>(
-    () => screenerQuestionToQuotaFormState(question),
+    () => draft?.quotaConfig ?? screenerQuestionToQuotaFormState(question),
   );
 
   useEffect(() => {
-    setValues(screenerQuestionToFormState(question));
-    setQuotaConfig(screenerQuestionToQuotaFormState(question));
+    setValues(draft?.values ?? screenerQuestionToFormState(question));
+    setQuotaConfig(
+      draft?.quotaConfig ?? screenerQuestionToQuotaFormState(question),
+    );
     setActiveTab("question");
-    // Reset panel when the selected question or its server snapshot changes.
+    // Reset panel when the selected question/server snapshot changes; draft is
+    // intentionally sampled only on that transition to avoid tab resets per key.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- question identity + updatedAt
   }, [question.id, question.updatedAt]);
+
+  const updateDraft = useCallback(
+    (
+      nextValues: QuestionEditorFormValues,
+      nextQuotaConfig: ScreenerQuestionQuotaConfig,
+    ) => {
+      onDraftChange(question.id, {
+        values: nextValues,
+        quotaConfig: nextQuotaConfig,
+      });
+    },
+    [onDraftChange, question.id],
+  );
+
+  const updateValues = useCallback(
+    (nextValues: QuestionEditorFormValues) => {
+      setValues(nextValues);
+      updateDraft(nextValues, quotaConfig);
+    },
+    [quotaConfig, updateDraft],
+  );
+
+  const updateQuotaConfig = useCallback(
+    (nextQuotaConfig: ScreenerQuestionQuotaConfig) => {
+      setQuotaConfig(nextQuotaConfig);
+      updateDraft(values, nextQuotaConfig);
+    },
+    [updateDraft, values],
+  );
 
   useEffect(() => {
     const optionCount = countQuotaOptions(values.answerOptions);
     if (quotaConfig.optionTargets.length === optionCount) return;
-    setQuotaConfig((prev) => ({
-      ...prev,
+    const nextQuotaConfig = {
+      ...quotaConfig,
       optionTargets: Array.from({ length: optionCount }, (_, i) => {
-        return prev.optionTargets[i] ?? {};
+        return quotaConfig.optionTargets[i] ?? {};
       }),
-    }));
-  }, [values.answerOptions, quotaConfig.optionTargets.length]);
+    };
+    setQuotaConfig(nextQuotaConfig);
+    updateDraft(values, nextQuotaConfig);
+  }, [quotaConfig, updateDraft, values]);
 
   const handleSave = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
+      if (pending) return;
       const showOptions = questionTypeHasOptions(values.questionType);
 
       startTransition(async () => {
@@ -105,7 +155,7 @@ export function ScreenerEditorQuestionPropertiesPanel({
         onQuestionUpdated(res.question);
       });
     },
-    [screenerId, question.id, values, quotaConfig, onQuestionUpdated],
+    [pending, screenerId, question.id, values, quotaConfig, onQuestionUpdated],
   );
 
   return (
@@ -170,16 +220,16 @@ export function ScreenerEditorQuestionPropertiesPanel({
       </div>
 
       <form
-        id={formId}
+        id={resolvedFormId}
         onSubmit={handleSave}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {activeTab === "question" ? (
             <QuestionEditorForm
-              formId={formId}
+              formId={resolvedFormId}
               values={values}
-              onValuesChange={setValues}
+              onValuesChange={updateValues}
               fromLibrary={Boolean(
                 question.libraryQuestionId || question.isLocked,
               )}
@@ -188,14 +238,14 @@ export function ScreenerEditorQuestionPropertiesPanel({
           ) : null}
           {activeTab === "logic" ? (
             <QuestionLogicForm
-              formId={formId}
+              formId={resolvedFormId}
               questionType={values.questionType}
               answerOptions={values.answerOptions}
               onAnswerOptionsChange={(answerOptions) =>
-                setValues((v) => ({ ...v, answerOptions }))
+                updateValues({ ...values, answerOptions })
               }
               notes={values.notes}
-              onNotesChange={(notes) => setValues((v) => ({ ...v, notes }))}
+              onNotesChange={(notes) => updateValues({ ...values, notes })}
               disabled={pending}
             />
           ) : null}
@@ -204,7 +254,7 @@ export function ScreenerEditorQuestionPropertiesPanel({
               markets={markets}
               answerOptions={values.answerOptions}
               quotaConfig={quotaConfig}
-              onQuotaConfigChange={setQuotaConfig}
+              onQuotaConfigChange={updateQuotaConfig}
               disabled={pending}
             />
           ) : null}

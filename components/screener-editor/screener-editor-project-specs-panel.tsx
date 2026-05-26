@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,15 +15,17 @@ import {
 } from "@/lib/projects/project-specs";
 
 export function ScreenerEditorProjectSpecsPanel({
+  formId,
   projectId,
   screenerId,
   specs,
-  onSpecsSaved,
+  onSpecsChange,
 }: {
+  formId?: string;
   projectId: string;
   screenerId: string;
   specs: ProjectSpecs;
-  onSpecsSaved: (specs: ProjectSpecs) => void;
+  onSpecsChange: (specs: ProjectSpecs) => void;
 }) {
   const [values, setValues] = useState<ProjectSpecs>(specs);
   const [pending, startTransition] = useTransition();
@@ -33,10 +35,15 @@ export function ScreenerEditorProjectSpecsPanel({
   }, [specs]);
 
   const patch = (key: keyof ProjectSpecs, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    const next = { ...values, [key]: value };
+    setValues(next);
+    onSpecsChange(next);
   };
 
-  const handleSave = () => {
+  const handleSave = (e?: FormEvent) => {
+    e?.preventDefault();
+    if (pending) return;
+
     startTransition(async () => {
       const res = await updateProjectSpecs({
         projectId,
@@ -50,12 +57,16 @@ export function ScreenerEditorProjectSpecsPanel({
       }
 
       toast.success("Project specs saved.");
-      onSpecsSaved(res.specs);
+      onSpecsChange(res.specs);
     });
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <form
+      id={formId}
+      onSubmit={handleSave}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
           Context for this project. The AI assistant uses these fields when
@@ -88,16 +99,15 @@ export function ScreenerEditorProjectSpecsPanel({
 
       <div className="shrink-0 border-t border-border/80 bg-[hsl(var(--workspace-panel))] p-3">
         <Button
-          type="button"
+          type="submit"
           size="sm"
           className="h-9 w-full gap-1.5 text-xs"
           disabled={pending}
-          onClick={handleSave}
         >
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
           Save project specs
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

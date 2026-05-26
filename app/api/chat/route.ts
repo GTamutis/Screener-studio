@@ -2,6 +2,8 @@ import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/messages";
 import { NextResponse } from "next/server";
 
+import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
+
 export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-4-6";
@@ -56,6 +58,11 @@ function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function appUserErrorStatus(message: string): number {
+  if (/sign in/i.test(message)) return 401;
+  return 403;
+}
+
 function mapApiError(error: APIError): { message: string; status: number } {
   const status = typeof error.status === "number" ? error.status : 502;
   if (status === 401) {
@@ -71,6 +78,11 @@ function mapApiError(error: APIError): { message: string; status: number } {
 }
 
 export async function POST(req: Request) {
+  const appUser = await getActiveAppUserForAction();
+  if ("error" in appUser) {
+    return errorResponse(appUser.error, appUserErrorStatus(appUser.error));
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("[api/chat] ANTHROPIC_API_KEY is not configured");
