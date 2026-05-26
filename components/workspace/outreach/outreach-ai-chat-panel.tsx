@@ -40,21 +40,36 @@ function toApiMessages(
 type OutreachAiChatPanelProps = {
   article: IndustryNewsItem;
   projectClientNames?: string[];
+  messages: OutreachAiChatMessage[];
+  onMessagesChange: (messages: OutreachAiChatMessage[]) => void;
+  onBeforeSend: () => Promise<string | null>;
+  onConversationComplete?: (
+    sessionId: string,
+    messages: OutreachAiChatMessage[],
+  ) => void | Promise<void>;
   className?: string;
 };
 
 export function OutreachAiChatPanel({
   article,
   projectClientNames = [],
+  messages,
+  onMessagesChange,
+  onBeforeSend,
+  onConversationComplete,
   className,
 }: OutreachAiChatPanelProps) {
-  const [messages, setMessages] = useState<OutreachAiChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const projectBrief = useMemo(() => {
     const parts = [
@@ -85,14 +100,17 @@ export function OutreachAiChatPanel({
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
 
+      const resolvedSessionId = await onBeforeSend();
+      if (!resolvedSessionId) return;
+
       const userMessage: OutreachAiChatMessage = {
         id: newMessageId(),
         role: "user",
         content: trimmed,
       };
 
-      const historyForApi = [...messages, userMessage];
-      setMessages((prev) => [...prev, userMessage]);
+      const historyForApi = [...messagesRef.current, userMessage];
+      onMessagesChange([...messagesRef.current, userMessage]);
       setInput("");
       setStreaming(true);
       setStreamingText("");
@@ -141,7 +159,9 @@ export function OutreachAiChatPanel({
           content: fullText,
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        const nextMessages = [...historyForApi, assistantMessage];
+        onMessagesChange(nextMessages);
+        await onConversationComplete?.(resolvedSessionId, nextMessages);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -151,14 +171,20 @@ export function OutreachAiChatPanel({
             ? error.message
             : "Something went wrong. Please try again.";
         toast.error(message);
-        setMessages((prev) => prev.slice(0, -1));
+        onMessagesChange(messagesRef.current.slice(0, -1));
       } finally {
         setStreaming(false);
         setStreamingText("");
         abortRef.current = null;
       }
     },
-    [streaming, messages, projectBrief],
+    [
+      streaming,
+      onBeforeSend,
+      onMessagesChange,
+      onConversationComplete,
+      projectBrief,
+    ],
   );
 
   const handleSubmit = (event: React.FormEvent) => {

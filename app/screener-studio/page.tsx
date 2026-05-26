@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, FileText, Folder, LayoutDashboard } from "lucide-react";
+import { ArrowRight, FileText, Folder } from "lucide-react";
 
 import { listProjects } from "@/app/actions/projects";
+import { listRecentScreeners } from "@/app/actions/screeners";
+import { RecentScreenersTable } from "@/components/screeners/recent-screeners-table";
 import { NewScreenerStudioDialog } from "@/components/screeners/new-screener-studio-dialog";
 import { PageHeader } from "@/components/ui/glass/page-header";
 import { GlassCard } from "@/components/ui/glass/glass-card";
-import { Badge } from "@/components/ui/badge";
 import type { ProjectSummary } from "@/lib/projects/types";
+import type { RecentScreenerSummary } from "@/lib/screeners/types";
 
 const SHORTCUTS = [
   {
@@ -32,12 +34,20 @@ export default async function ScreenerStudioHomePage() {
     projects = [];
   }
 
+  let screeners: RecentScreenerSummary[] = [];
+  try {
+    const result = await listRecentScreeners();
+    if (!("error" in result)) screeners = result;
+  } catch {
+    screeners = [];
+  }
+
   return (
     <div className="space-y-12">
       <PageHeader
         eyebrow="Screener Studio"
         title="Dashboard"
-        description="Overview and shortcuts for your screening work. Quick links below — full dashboards are on the way."
+        description="Overview and shortcuts for your screening work. Open a recent screener below or start a new one."
         actions={<NewScreenerStudioDialog projects={projects} />}
       />
 
@@ -72,27 +82,7 @@ export default async function ScreenerStudioHomePage() {
         })}
       </section>
 
-      <section>
-        <GlassCard className="flex flex-col items-start gap-4 p-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-gradient-soft text-foreground ring-1 ring-inset ring-primary/20">
-              <LayoutDashboard className="h-5 w-5" />
-            </div>
-            <div>
-              <Badge variant="info" className="mb-2">
-                Coming soon
-              </Badge>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Activity overview
-              </h2>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Live metrics across projects, response volumes, and progress
-                indicators will land here.
-              </p>
-            </div>
-          </div>
-        </GlassCard>
-      </section>
+      <RecentScreenersTable screeners={screeners} />
     </div>
   );
 }

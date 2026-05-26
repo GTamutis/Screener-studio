@@ -3,13 +3,15 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { listProjects } from "@/app/actions/projects";
-import { OutreachAiChatPanel } from "@/components/workspace/outreach/outreach-ai-chat-panel";
+import { listOutreachChatSessions } from "@/app/actions/outreach-chats";
+import { OutreachChatWithHistory } from "@/components/workspace/outreach/outreach-chat-with-history";
 import { OutreachArticleHeader } from "@/components/workspace/outreach/outreach-article-header";
 import {
   WorkspaceStagger,
   WorkspaceStaggerItem,
 } from "@/components/workspace/workspace-stagger";
 import { getIndustryNewsArticleById } from "@/lib/workspace/outreach-ai/get-article";
+import type { OutreachChatSessionSummary } from "@/lib/workspace/outreach-ai/session-types";
 import type { ProjectSummary } from "@/lib/projects/types";
 
 type PageProps = {
@@ -25,6 +27,7 @@ export default async function IndustryNewsOutreachPage({ params }: PageProps) {
   }
 
   let projectClientNames: string[] = [];
+  let initialSessions: OutreachChatSessionSummary[] = [];
   try {
     const result = await listProjects();
     if (!("error" in result)) {
@@ -38,6 +41,15 @@ export default async function IndustryNewsOutreachPage({ params }: PageProps) {
     }
   } catch {
     projectClientNames = [];
+  }
+
+  try {
+    const sessionsResult = await listOutreachChatSessions(article.id);
+    if (!("error" in sessionsResult)) {
+      initialSessions = sessionsResult;
+    }
+  } catch {
+    initialSessions = [];
   }
 
   return (
@@ -69,9 +81,10 @@ export default async function IndustryNewsOutreachPage({ params }: PageProps) {
         </WorkspaceStaggerItem>
 
         <WorkspaceStaggerItem>
-          <OutreachAiChatPanel
+          <OutreachChatWithHistory
             article={article}
             projectClientNames={projectClientNames}
+            initialSessions={initialSessions}
           />
         </WorkspaceStaggerItem>
       </WorkspaceStagger>

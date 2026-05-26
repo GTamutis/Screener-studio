@@ -18,3 +18,14 @@ export interface ScreenerWithProject extends ScreenerSummary {
   markets: string[];
   projectSpecs: ProjectSpecs;
 }
+
+export interface RecentScreenerSummary {
+  id: string;
+  name: string;
+  status: ScreenerStatus;
+  clientName: string;
+  projectName: string;
+  projectNumber: string;
+  ownerDisplayName: string;
+  updatedAt: string;
+}

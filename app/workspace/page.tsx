@@ -1,7 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 
 import { listProjects } from "@/app/actions/projects";
-import { WorkspaceMetricCards } from "@/components/workspace/workspace-metric-cards";
 import { WorkspaceNewsFeed } from "@/components/workspace/workspace-news-feed";
 import { WorkspacePlacecards } from "@/components/workspace/workspace-placecards";
 import { WorkspaceProjectsTable } from "@/components/workspace/workspace-projects-table";
@@ -69,10 +68,6 @@ export default async function WorkspacePage() {
                 place.
               </p>
             </header>
-          </WorkspaceStaggerItem>
-
-          <WorkspaceStaggerItem>
-            <WorkspaceMetricCards metrics={metrics} />
           </WorkspaceStaggerItem>
 
           <WorkspaceStaggerItem>

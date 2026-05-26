@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FolderKanban } from "lucide-react";
 
 import {
   ProjectRowStatusBadge,
@@ -26,9 +27,15 @@ export function WorkspaceProjectsTable({
   return (
     <section className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-          Recent projects
-        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <FolderKanban
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden
+          />
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
+            Recent projects
+          </h2>
+        </div>
         <Link
           href="/projects"
           className="text-sm font-medium text-primary hover:underline"

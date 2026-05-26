@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getProject } from "@/app/actions/projects";
+import { getProject, listProjects } from "@/app/actions/projects";
 import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import { normalizeWhitespace } from "@/lib/invitely/validation";
 import type {
+  RecentScreenerSummary,
   ScreenerStatus,
   ScreenerSummary,
   ScreenerWithProject,
@@ -39,6 +40,115 @@ function mapScreener(row: DbScreenerRow): ScreenerSummary {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+type DbRecentScreenerRow = {
+  id: string;
+  name: string;
+  status: ScreenerStatus;
+  updated_at: string;
+  created_by: string;
+  projects:
+    | {
+        client_name: string;
+        project_name: string;
+        project_number: string;
+      }
+    | {
+        client_name: string;
+        project_name: string;
+        project_number: string;
+      }[];
+};
+
+function appUserDisplayName(
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+): string {
+  const name =
+    (typeof displayName === "string" && displayName.trim()) ||
+    (typeof email === "string" && email.trim()) ||
+    "";
+  return name || "Unknown";
+}
+
+async function resolveAppUserDisplayNames(
+  supabase: ReturnType<typeof createAdminClient>,
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(userIds.filter(Boolean)));
+  const map = new Map<string, string>();
+  if (unique.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("id, display_name, email")
+    .in("id", unique);
+
+  if (error) return map;
+
+  for (const row of data ?? []) {
+    const id = row.id as string | null;
+    if (!id) continue;
+    map.set(
+      id,
+      appUserDisplayName(
+        row.display_name as string | null,
+        row.email as string | null,
+      ),
+    );
+  }
+  return map;
+}
+
+export async function listRecentScreeners(
+  limit = 12,
+): Promise<RecentScreenerSummary[] | { error: string }> {
+  try {
+    const projectsResult = await listProjects();
+    if ("error" in projectsResult) return { error: projectsResult.error };
+
+    const projectIds = projectsResult.map((p) => p.id);
+    if (projectIds.length === 0) return [];
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("screeners")
+      .select(
+        "id, name, status, updated_at, created_by, projects!inner(client_name, project_name, project_number)",
+      )
+      .in("project_id", projectIds)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (error) return { error: error.message };
+
+    const rows = (data ?? []) as DbRecentScreenerRow[];
+    const ownerNames = await resolveAppUserDisplayNames(
+      supabase,
+      rows.map((row) => row.created_by),
+    );
+
+    return rows.map((row) => {
+      const project = Array.isArray(row.projects)
+        ? row.projects[0]
+        : row.projects;
+      return {
+        id: row.id,
+        name: row.name,
+        status: row.status,
+        clientName: project?.client_name ?? "—",
+        projectName: project?.project_name ?? "—",
+        projectNumber: project?.project_number ?? "—",
+        ownerDisplayName: ownerNames.get(row.created_by) ?? "Unknown",
+        updatedAt: row.updated_at,
+      };
+    });
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not load screeners.",
+    };
+  }
 }
 
 export async function listScreenersForProject(
@@ -185,6 +295,7 @@ export async function touchScreenerSave(
     if (error) return { ok: false, error: error.message };
 
     revalidatePath(`/workspace/screener-studio/${screenerId}`);
+    revalidatePath("/screener-studio");
     return { ok: true };
   } catch (e) {
     return {

@@ -68,10 +68,10 @@ const TOOL_NAV: NavItem[] = [
     match: (p) => p.startsWith("/workspace/fair-market-values"),
   },
   {
-    href: "/workspace",
+    href: "/workspace/tools",
     label: "Tools & marketplace",
     icon: LayoutGrid,
-    match: () => false,
+    match: (p) => p === "/workspace/tools" || p.startsWith("/workspace/tools/"),
   },
 ];
 
