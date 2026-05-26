@@ -5,7 +5,10 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import { ScreenerEditorAiChatPanel } from "@/components/screener-editor/screener-editor-ai-chat-panel";
 import { ScreenerEditorLibraryPanel } from "@/components/screener-editor/screener-editor-library-panel";
 import { ScreenerEditorProjectSpecsPanel } from "@/components/screener-editor/screener-editor-project-specs-panel";
-import { ScreenerEditorQuestionPropertiesPanel } from "@/components/screener-editor/screener-editor-question-properties-panel";
+import {
+  ScreenerEditorQuestionPropertiesPanel,
+  type ScreenerQuestionPropertiesDraft,
+} from "@/components/screener-editor/screener-editor-question-properties-panel";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
 import type { ProjectSpecs } from "@/lib/projects/project-specs";
 import type { ScreenerEditorAiChatState } from "@/lib/screeners/ai-chat/editor-chat-state";
@@ -26,23 +29,28 @@ export function ScreenerEditorRightPanel({
   screener,
   projectSpecs,
   onProjectSpecsChange,
+  activeSaveFormId,
   libraryQuestions,
   screenerQuestions,
   selectedQuestion,
+  selectedQuestionDraft,
   browserTab: browserTabProp,
   onBrowserTabChange,
   aiChatState,
   onAiChatStateChange,
   onQuestionAdded,
   onQuestionUpdated,
+  onQuestionDraftChange,
   onDeselectQuestion,
 }: {
   screener: ScreenerWithProject;
   projectSpecs: ProjectSpecs;
   onProjectSpecsChange: (specs: ProjectSpecs) => void;
+  activeSaveFormId?: string;
   libraryQuestions: QuestionLibraryItem[];
   screenerQuestions: ScreenerQuestion[];
   selectedQuestion: ScreenerQuestion | null;
+  selectedQuestionDraft?: ScreenerQuestionPropertiesDraft;
   browserTab?: ScreenerEditorBrowserTab;
   onBrowserTabChange?: (tab: ScreenerEditorBrowserTab) => void;
   aiChatState: ScreenerEditorAiChatState;
@@ -52,6 +60,10 @@ export function ScreenerEditorRightPanel({
     options?: ScreenerQuestionAddedOptions,
   ) => void;
   onQuestionUpdated: (question: ScreenerQuestion) => void;
+  onQuestionDraftChange: (
+    questionId: string,
+    draft: ScreenerQuestionPropertiesDraft,
+  ) => void;
   onDeselectQuestion: () => void;
 }) {
   const [browserTabInternal, setBrowserTabInternal] =
@@ -63,11 +75,14 @@ export function ScreenerEditorRightPanel({
     return (
       <aside className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm">
         <ScreenerEditorQuestionPropertiesPanel
+          formId={activeSaveFormId}
           screenerId={screener.id}
           markets={screener.markets}
           question={selectedQuestion}
+          draft={selectedQuestionDraft}
           onClose={onDeselectQuestion}
           onQuestionUpdated={onQuestionUpdated}
+          onDraftChange={onQuestionDraftChange}
           onBackToAiChat={
             browserTab === "ai" ? onDeselectQuestion : undefined
           }
@@ -106,10 +121,11 @@ export function ScreenerEditorRightPanel({
       <div role="tabpanel" className="flex min-h-0 flex-1 flex-col">
         {browserTab === "specs" ? (
           <ScreenerEditorProjectSpecsPanel
+            formId={activeSaveFormId}
             projectId={screener.projectId}
             screenerId={screener.id}
             specs={projectSpecs}
-            onSpecsSaved={onProjectSpecsChange}
+            onSpecsChange={onProjectSpecsChange}
           />
         ) : browserTab === "library" ? (
           <ScreenerEditorLibraryPanel

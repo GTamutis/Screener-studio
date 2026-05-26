@@ -1,33 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
-import { ChevronRight, Download, FileText, Loader2, Save } from "lucide-react";
+import { ChevronRight, Download, FileText, Save } from "lucide-react";
 import { toast } from "sonner";
 
-import { touchScreenerSave } from "@/app/actions/screeners";
 import { ScreenerStatusBadge } from "@/components/screeners/screener-status-badge";
 import { Button } from "@/components/ui/button";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export function ScreenerEditorToolbar({
   screener,
+  activeSaveFormId,
 }: {
   screener: ScreenerWithProject;
+  activeSaveFormId?: string;
 }) {
-  const [saving, startSave] = useTransition();
-
-  const handleSave = () => {
-    startSave(async () => {
-      const res = await touchScreenerSave(screener.id);
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success("Screener saved.");
-    });
-  };
-
   const handleExport = () => {
     toast.message("Export coming soon");
   };
@@ -53,18 +40,19 @@ export function ScreenerEditorToolbar({
 
       <div className="flex shrink-0 items-center gap-2">
         <Button
-          type="button"
+          type={activeSaveFormId ? "submit" : "button"}
+          form={activeSaveFormId}
           variant="outline"
           size="sm"
           className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
-          disabled={saving}
-          onClick={handleSave}
+          disabled={!activeSaveFormId}
+          title={
+            activeSaveFormId
+              ? "Save the active editor panel"
+              : "Open project specs or a question to save changes"
+          }
         >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
+          <Save className="h-4 w-4" />
           Save
         </Button>
         <ScreenerStatusBadge status={screener.status} />
