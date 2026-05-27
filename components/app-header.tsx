@@ -6,6 +6,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { DayOneMark } from "@/components/brand/day-one-mark";
 import { UserMenu } from "@/components/ui/glass/user-menu";
+import { WorkspaceFeedbackMenu } from "@/components/workspace/workspace-feedback-menu";
 import { cn } from "@/lib/utils";
 
 export type AppHeaderNavItem = { href: string; label: string };
@@ -119,6 +120,7 @@ export function AppHeader({
               Workspace
             </Link>
           ) : null}
+          <WorkspaceFeedbackMenu displayName={displayName} variant="header" />
           <UserMenu
             displayName={displayName}
             isAdmin={isAdmin}

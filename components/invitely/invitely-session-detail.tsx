@@ -127,7 +127,7 @@ export function InvitelySessionDetail({
   };
 
   const copyEmails = async (country: string, emails: string[]) => {
-    const payload = emails.join(", ");
+    const payload = emails.join("; ");
     try {
       await navigator.clipboard.writeText(payload);
       toast.success(`Copied emails for ${country}`);

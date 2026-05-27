@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Moon, Sun, User as UserIcon, Users } from "lucide-react";
+import { Inbox, LogOut, Moon, Sun, User as UserIcon, Users } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import * as React from "react";
@@ -107,6 +107,12 @@ export function UserMenu({
                     {pendingCount} pending
                   </Badge>
                 ) : null}
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/workspace/feedback" className="cursor-pointer">
+                <Inbox className="h-4 w-4" />
+                <span>Feedback inbox</span>
               </Link>
             </DropdownMenuItem>
           </>

@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Calculator,
   FileText,
-  HelpCircle,
   Home,
   LayoutGrid,
   FolderKanban,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { DayOneMark } from "@/components/brand/day-one-mark";
+import { WorkspaceFeedbackMenu } from "@/components/workspace/workspace-feedback-menu";
 import { ThemeToggle } from "@/components/ui/glass/theme-toggle";
 import { UserMenu } from "@/components/ui/glass/user-menu";
 import {
@@ -81,12 +80,6 @@ const BOTTOM_NAV: NavItem[] = [
     label: "Team",
     icon: Users,
     match: (p) => p.startsWith("/workspace/users"),
-  },
-  {
-    href: "/workspace",
-    label: "Analytics",
-    icon: BarChart3,
-    match: () => false,
   },
 ];
 
@@ -160,18 +153,7 @@ export function WorkspaceSidebar({
         {BOTTOM_NAV.map((item) => (
           <SidebarLink key={item.href + item.label} item={item} />
         ))}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Help"
-            >
-              <HelpCircle className="h-[18px] w-[18px] stroke-[1.5]" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Help</TooltipContent>
-        </Tooltip>
+        <WorkspaceFeedbackMenu displayName={displayName} />
 
         <div
           role="presentation"
