@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
-import { ChevronRight, Download, FileText, Loader2, Save } from "lucide-react";
+import { useState, useTransition } from "react";
+import {
+  ChevronRight,
+  ClipboardCheck,
+  Download,
+  FileText,
+  Loader2,
+  Save,
+  Square,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { touchScreenerSave } from "@/app/actions/screeners";
@@ -12,10 +20,17 @@ import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export function ScreenerEditorToolbar({
   screener,
+  qualityReviewLoading,
+  onRunQualityReview,
+  onStopQualityReview,
 }: {
   screener: ScreenerWithProject;
+  qualityReviewLoading?: boolean;
+  onRunQualityReview?: () => void;
+  onStopQualityReview?: () => void;
 }) {
   const [saving, startSave] = useTransition();
+  const [exporting, setExporting] = useState(false);
 
   const handleSave = () => {
     startSave(async () => {
@@ -28,8 +43,45 @@ export function ScreenerEditorToolbar({
     });
   };
 
-  const handleExport = () => {
-    toast.message("Export coming soon");
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch("/api/export/word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ screenerId: screener.id }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        toast.error(payload?.error ?? "Export failed. Please try again.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] ??
+        `${screener.name.replace(/[^\w\s-]+/g, "").trim() || "screener"}-export.docx`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success("Word document downloaded.");
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -52,6 +104,29 @@ export function ScreenerEditorToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {qualityReviewLoading && onStopQualityReview ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 border-destructive/40 bg-[hsl(var(--workspace-surface))] text-destructive hover:bg-destructive/5 hover:text-destructive"
+            onClick={onStopQualityReview}
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+            Stop review
+          </Button>
+        ) : onRunQualityReview ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
+            onClick={onRunQualityReview}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Run Quality Review
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
@@ -73,9 +148,14 @@ export function ScreenerEditorToolbar({
           variant="outline"
           size="sm"
           className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
+          disabled={exporting}
           onClick={handleExport}
         >
-          <Download className="h-4 w-4" />
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
           Export
         </Button>
       </div>

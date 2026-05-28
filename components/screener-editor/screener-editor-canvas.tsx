@@ -15,6 +15,7 @@ export function ScreenerEditorCanvas({
   screener,
   questions,
   selectedQuestionId,
+  highlightedQuestionId,
   onSelectQuestion,
   onDeselectQuestion,
   onQuestionAdded,
@@ -24,6 +25,7 @@ export function ScreenerEditorCanvas({
   screener: ScreenerWithProject;
   questions: ScreenerQuestion[];
   selectedQuestionId: string | null;
+  highlightedQuestionId?: string | null;
   onSelectQuestion: (id: string) => void;
   onDeselectQuestion: () => void;
   onQuestionAdded: (question: ScreenerQuestion) => void;
@@ -107,6 +109,7 @@ export function ScreenerEditorCanvas({
               screenerId={screener.id}
               questions={questions}
               selectedQuestionId={selectedQuestionId}
+              highlightedQuestionId={highlightedQuestionId}
               onSelectQuestion={onSelectQuestion}
               onDeleteQuestion={handleDelete}
               onQuestionsReplaced={onQuestionsReplaced}

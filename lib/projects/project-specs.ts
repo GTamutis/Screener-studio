@@ -19,7 +19,7 @@ export const PROJECT_SPEC_FIELDS: {
 }[] = [
   {
     key: "openText",
-    label: "Open text",
+    label: "Project Description",
     placeholder:
       "General project description, study design notes, or anything the team should know…",
     rows: 4,

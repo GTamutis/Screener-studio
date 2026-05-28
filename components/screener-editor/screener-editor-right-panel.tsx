@@ -109,6 +109,7 @@ export function ScreenerEditorRightPanel({
             projectId={screener.projectId}
             screenerId={screener.id}
             specs={projectSpecs}
+            onSpecsChange={onProjectSpecsChange}
             onSpecsSaved={onProjectSpecsChange}
           />
         ) : browserTab === "library" ? (

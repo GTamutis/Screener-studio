@@ -24,6 +24,7 @@ export function ScreenerQuestionCard({
   question,
   displayPosition,
   selected,
+  highlighted,
   onSelect,
   onDelete,
   deleting,
@@ -34,6 +35,7 @@ export function ScreenerQuestionCard({
   /** Visual order in the list (Q1, Q2, …); defaults to stored position. */
   displayPosition?: number;
   selected?: boolean;
+  highlighted?: boolean;
   onSelect?: () => void;
   onDelete?: () => void;
   deleting?: boolean;
@@ -61,6 +63,8 @@ export function ScreenerQuestionCard({
         "hover:border-border hover:shadow-md",
         selected &&
           "ring-2 ring-blue-500 ring-offset-2 ring-offset-[hsl(var(--workspace-surface))] dark:ring-offset-[hsl(var(--workspace-surface))]",
+        highlighted &&
+          "ring-2 ring-amber-500 ring-offset-2 ring-offset-[hsl(var(--workspace-surface))] dark:ring-offset-[hsl(var(--workspace-surface))]",
         isDragging && "shadow-md ring-1 ring-border",
       )}
     >

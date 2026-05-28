@@ -1,29 +1,116 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, ListTree } from "lucide-react";
+
 import { ScreenerQuotasOutline } from "@/components/screener-editor/screener-quotas-outline";
+import { Button } from "@/components/ui/button";
 import {
   questionLabel,
   type ScreenerQuestion,
 } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
+const OUTLINE_COLLAPSED_KEY = "screener-editor-outline-collapsed";
+
 export function ScreenerEditorOutline({
   questions,
   markets,
   selectedQuestionId,
   onSelectQuestion,
+  onCollapsedChange,
 }: {
   questions: ScreenerQuestion[];
   markets: string[];
   selectedQuestionId: string | null;
   onSelectQuestion: (id: string) => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(OUTLINE_COLLAPSED_KEY);
+      if (stored === "true") {
+        setCollapsed(true);
+        onCollapsedChange?.(true);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [onCollapsedChange]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(OUTLINE_COLLAPSED_KEY, String(next));
+      } catch {
+        // ignore storage errors
+      }
+      onCollapsedChange?.(next);
+      return next;
+    });
+  };
+
+  if (collapsed) {
+    return (
+      <aside
+        className="flex h-full min-h-0 w-11 shrink-0 flex-col items-center border-r border-border/80 bg-[hsl(var(--workspace-surface))] py-3"
+        aria-label="Screener outline (collapsed)"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground"
+          onClick={toggleCollapsed}
+          title="Show outline"
+          aria-expanded={false}
+          aria-controls="screener-editor-outline"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Show outline</span>
+        </Button>
+        <div
+          className="mt-3 flex flex-1 flex-col items-center gap-2"
+          aria-hidden
+        >
+          <ListTree className="h-4 w-4 text-muted-foreground/70" />
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+            style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+          >
+            Outline
+          </span>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col overflow-hidden border-r border-border/80 bg-[hsl(var(--workspace-surface))]">
+    <aside
+      id="screener-editor-outline"
+      className="flex h-full min-h-0 w-56 shrink-0 flex-col overflow-hidden border-r border-border/80 bg-[hsl(var(--workspace-surface))]"
+      aria-label="Screener outline"
+    >
       <div className="flex min-h-0 flex-1 flex-col divide-y divide-border/80">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="shrink-0 border-b border-border/80 bg-[hsl(var(--workspace-panel))] px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="flex shrink-0 items-center gap-1 border-b border-border/80 bg-[hsl(var(--workspace-panel))] px-2 py-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={toggleCollapsed}
+              title="Hide outline"
+              aria-expanded={true}
+              aria-controls="screener-editor-outline"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              <span className="sr-only">Hide outline</span>
+            </Button>
+            <p className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Outline · {questions.length} question
               {questions.length === 1 ? "" : "s"}
             </p>

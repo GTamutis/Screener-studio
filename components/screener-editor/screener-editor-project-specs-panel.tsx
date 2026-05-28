@@ -18,11 +18,14 @@ export function ScreenerEditorProjectSpecsPanel({
   projectId,
   screenerId,
   specs,
+  onSpecsChange,
   onSpecsSaved,
 }: {
   projectId: string;
   screenerId: string;
   specs: ProjectSpecs;
+  /** Keeps editor AI/review context in sync while typing (before Save). */
+  onSpecsChange?: (specs: ProjectSpecs) => void;
   onSpecsSaved: (specs: ProjectSpecs) => void;
 }) {
   const [values, setValues] = useState<ProjectSpecs>(specs);
@@ -33,7 +36,11 @@ export function ScreenerEditorProjectSpecsPanel({
   }, [specs]);
 
   const patch = (key: keyof ProjectSpecs, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      onSpecsChange?.(next);
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -58,8 +65,8 @@ export function ScreenerEditorProjectSpecsPanel({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-          Context for this project. The AI assistant uses these fields when
-          suggesting and drafting screening questions.
+          Context for this project. AI chat and quality review use these fields
+          when drafting and reviewing your screener.
         </p>
 
         <div className="space-y-4">

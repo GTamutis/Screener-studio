@@ -27,6 +27,7 @@ export function ScreenerQuestionSortableList({
   screenerId,
   questions,
   selectedQuestionId,
+  highlightedQuestionId,
   onSelectQuestion,
   onDeleteQuestion,
   onQuestionsReplaced,
@@ -36,6 +37,7 @@ export function ScreenerQuestionSortableList({
   screenerId: string;
   questions: ScreenerQuestion[];
   selectedQuestionId: string | null;
+  highlightedQuestionId?: string | null;
   onSelectQuestion: (id: string) => void;
   onDeleteQuestion: (question: ScreenerQuestion) => void;
   onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
@@ -114,6 +116,7 @@ export function ScreenerQuestionSortableList({
               question={question}
               displayPosition={index + 1}
               selected={selectedQuestionId === question.id}
+              highlighted={highlightedQuestionId === question.id}
               onSelect={() => onSelectQuestion(question.id)}
               onDelete={() => onDeleteQuestion(question)}
               deleting={deletingId === question.id}

@@ -10,6 +10,7 @@ export function SortableScreenerQuestionCard({
   question,
   displayPosition,
   selected,
+  highlighted,
   onSelect,
   onDelete,
   deleting,
@@ -18,6 +19,7 @@ export function SortableScreenerQuestionCard({
   question: ScreenerQuestion;
   displayPosition: number;
   selected?: boolean;
+  highlighted?: boolean;
   onSelect?: () => void;
   onDelete?: () => void;
   deleting?: boolean;
@@ -62,6 +64,7 @@ export function SortableScreenerQuestionCard({
         question={question}
         displayPosition={displayPosition}
         selected={selected}
+        highlighted={highlighted}
         onSelect={onSelect}
         onDelete={onDelete}
         deleting={deleting}
