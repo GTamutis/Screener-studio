@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/ui/glass/theme-provider";
@@ -68,6 +69,7 @@ export default function RootLayout({
             <Toaster />
           </ClerkProvider>
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
