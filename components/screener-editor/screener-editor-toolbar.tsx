@@ -13,18 +13,23 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { touchScreenerSave } from "@/app/actions/screeners";
-import { ScreenerStatusBadge } from "@/components/screeners/screener-status-badge";
+import {
+  touchScreenerSave,
+  type ScreenerVersionSnapshot,
+} from "@/app/actions/screeners";
+import { ScreenerEditorStatusMenu } from "@/components/screener-editor/screener-editor-status-menu";
 import { Button } from "@/components/ui/button";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export function ScreenerEditorToolbar({
   screener,
+  onScreenerVersionChange,
   qualityReviewLoading,
   onRunQualityReview,
   onStopQualityReview,
 }: {
   screener: ScreenerWithProject;
+  onScreenerVersionChange: (snapshot: ScreenerVersionSnapshot) => void;
   qualityReviewLoading?: boolean;
   onRunQualityReview?: () => void;
   onStopQualityReview?: () => void;
@@ -39,6 +44,7 @@ export function ScreenerEditorToolbar({
         toast.error(res.error);
         return;
       }
+      onScreenerVersionChange(res.screener);
       toast.success("Screener saved.");
     });
   };
@@ -142,7 +148,13 @@ export function ScreenerEditorToolbar({
           )}
           Save
         </Button>
-        <ScreenerStatusBadge status={screener.status} />
+        <ScreenerEditorStatusMenu
+          screenerId={screener.id}
+          status={screener.status}
+          majorVersion={screener.majorVersion}
+          minorVersion={screener.minorVersion}
+          onStatusChange={onScreenerVersionChange}
+        />
         <Button
           type="button"
           variant="outline"

@@ -1,12 +1,9 @@
 import type { ScreenerStatus } from "@/lib/screeners/types";
 
-export type ScreenerDisplayStatus = "draft" | "final";
+export type ScreenerDisplayStatus = ScreenerStatus;
 
-/** User-facing draft vs final labels for dashboard tables. */
-export function screenerToDisplayStatus(
-  status: ScreenerStatus,
-): ScreenerDisplayStatus {
-  return status === "published" || status === "archived" ? "final" : "draft";
+export function screenerToDisplayStatus(status: ScreenerStatus): ScreenerDisplayStatus {
+  return status;
 }
 
 export function screenerDisplayStatusLabel(

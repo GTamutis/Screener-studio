@@ -35,6 +35,8 @@ import {
   subLabelHeading,
   tableCell,
 } from "./styles";
+import { formatScreenerVersionMetadataValue } from "@/lib/screeners/version";
+
 import type { WordExportPayload } from "./types";
 
 const LABEL_WIDTH = 2268;
@@ -132,7 +134,15 @@ export function buildCoverBlock(payload: WordExportPayload): FileChild[] {
         screener.projectNumber || "[Project number]",
         !screener.projectNumber,
       ),
-      metadataRow("Version:", "[Version number]", true),
+      metadataRow(
+        "Version:",
+        formatScreenerVersionMetadataValue({
+          majorVersion: screener.majorVersion,
+          minorVersion: screener.minorVersion,
+          status: screener.status,
+        }),
+        false,
+      ),
     ],
   });
 

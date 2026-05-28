@@ -28,6 +28,10 @@ import {
   SIZE_FOOTER,
 } from "./constants";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
+import {
+  formatScreenerNameWithVersion,
+  formatScreenerVersionLabel,
+} from "@/lib/screeners/version";
 import { fetchWordExportPayload } from "./fetch-export-data";
 import { renderClosingRule, renderExportQuestion } from "./questions";
 import {
@@ -108,8 +112,6 @@ async function loadLogoImage(): Promise<Buffer | null> {
   }
 }
 
-const EXPORT_VERSION_LABEL = "v1";
-
 function headerMetaRun(text: string): TextRun {
   return new TextRun({
     text,
@@ -151,13 +153,18 @@ function buildHeader(logo: Buffer | null, screener: ScreenerWithProject): Header
   const projectNumber =
     screener.projectNumber.trim() || "[Project number]";
   const projectName = screener.projectName.trim() || "[Project name]";
+  const screenerLine = formatScreenerNameWithVersion(screener.name, {
+    majorVersion: screener.majorVersion,
+    minorVersion: screener.minorVersion,
+    status: screener.status,
+  });
 
   const metaChildren: TextRun[] = [
     headerMetaRun(projectNumber),
     new TextRun({ break: 1 }),
     headerMetaRun(projectName),
     new TextRun({ break: 1 }),
-    headerMetaRun(EXPORT_VERSION_LABEL),
+    headerMetaRun(screenerLine),
   ];
 
   const headerParagraphChildren: (ImageRun | TextRun)[] = logo
@@ -178,7 +185,7 @@ function buildHeader(logo: Buffer | null, screener: ScreenerWithProject): Header
   });
 }
 
-function buildFooter(versionLabel: string = EXPORT_VERSION_LABEL): Footer {
+function buildFooter(versionLabel: string): Footer {
   return new Footer({
     children: [
       new Paragraph({
@@ -220,6 +227,11 @@ export async function buildScreenerWordDocument(
 ): Promise<{ buffer: Buffer; filename: string }> {
   const payload = await fetchWordExportPayload(screenerId);
   const { screener, questions } = payload;
+  const versionLabel = formatScreenerVersionLabel({
+    majorVersion: screener.majorVersion,
+    minorVersion: screener.minorVersion,
+    status: screener.status,
+  });
   const logo = await loadLogoImage();
 
   const grouped = groupQuestionsBySection(questions);
@@ -301,8 +313,8 @@ export async function buildScreenerWordDocument(
           first: new Header({ children: [] }),
         },
         footers: {
-          default: buildFooter(),
-          first: buildFooter(),
+          default: buildFooter(versionLabel),
+          first: buildFooter(versionLabel),
         },
         children: bodyChildren,
       },

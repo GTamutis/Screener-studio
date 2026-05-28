@@ -3,17 +3,13 @@ import type { ScreenerStatus } from "@/lib/screeners/types";
 
 const STATUS_LABEL: Record<ScreenerStatus, string> = {
   draft: "Draft",
-  in_progress: "In progress",
-  published: "Published",
-  archived: "Archived",
+  final: "Final",
 };
 
 const STATUS_VARIANT: Record<ScreenerStatus, NonNullable<BadgeProps["variant"]>> =
   {
     draft: "outline",
-    in_progress: "info",
-    published: "success",
-    archived: "secondary",
+    final: "success",
   };
 
 export function screenerStatusLabel(status: ScreenerStatus): string {

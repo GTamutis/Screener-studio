@@ -11,6 +11,11 @@ import type {
   ScreenerSummary,
   ScreenerWithProject,
 } from "@/lib/screeners/types";
+import {
+  versionFieldsAfterSave,
+  versionFieldsAfterSetDraft,
+  versionFieldsAfterSetFinal,
+} from "@/lib/screeners/version";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const UUID_RE =
@@ -27,9 +32,14 @@ type DbScreenerRow = {
   project_id: string;
   name: string;
   status: ScreenerStatus;
+  major_version: number;
+  minor_version: number;
   created_at: string;
   updated_at: string;
 };
+
+const SCREENER_SELECT =
+  "id, project_id, name, status, major_version, minor_version, created_at, updated_at";
 
 function mapScreener(row: DbScreenerRow): ScreenerSummary {
   return {
@@ -37,6 +47,8 @@ function mapScreener(row: DbScreenerRow): ScreenerSummary {
     projectId: row.project_id,
     name: row.name,
     status: row.status,
+    majorVersion: row.major_version,
+    minorVersion: row.minor_version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -46,6 +58,8 @@ type DbRecentScreenerRow = {
   id: string;
   name: string;
   status: ScreenerStatus;
+  major_version: number;
+  minor_version: number;
   updated_at: string;
   created_by: string;
   projects:
@@ -115,7 +129,7 @@ export async function listRecentScreeners(
     const { data, error } = await supabase
       .from("screeners")
       .select(
-        "id, name, status, updated_at, created_by, projects!inner(client_name, project_name, project_number)",
+        "id, name, status, major_version, minor_version, updated_at, created_by, projects!inner(client_name, project_name, project_number)",
       )
       .in("project_id", projectIds)
       .order("updated_at", { ascending: false })
@@ -137,6 +151,8 @@ export async function listRecentScreeners(
         id: row.id,
         name: row.name,
         status: row.status,
+        majorVersion: row.major_version,
+        minorVersion: row.minor_version,
         clientName: project?.client_name ?? "—",
         projectName: project?.project_name ?? "—",
         projectNumber: project?.project_number ?? "—",
@@ -161,7 +177,7 @@ export async function listScreenersForProject(
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("screeners")
-      .select("id, project_id, name, status, created_at, updated_at")
+      .select(SCREENER_SELECT)
       .eq("project_id", projectId)
       .order("created_at", { ascending: false });
 
@@ -202,6 +218,8 @@ export async function createScreener(input: {
         project_id: input.projectId,
         name,
         status: "draft",
+        major_version: 0,
+        minor_version: 0,
         created_by: appUser.id,
       })
       .select("id")
@@ -239,7 +257,7 @@ export async function getScreener(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("screeners")
-    .select("id, project_id, name, status, created_at, updated_at")
+    .select(SCREENER_SELECT)
     .eq("id", screenerId)
     .eq("project_id", projectId)
     .maybeSingle();
@@ -258,7 +276,7 @@ export async function getScreenerById(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("screeners")
-    .select("id, project_id, name, status, created_at, updated_at")
+    .select(SCREENER_SELECT)
     .eq("id", screenerId)
     .maybeSingle();
 
@@ -279,28 +297,183 @@ export async function getScreenerById(
   };
 }
 
+export type ScreenerVersionSnapshot = Pick<
+  ScreenerSummary,
+  "status" | "majorVersion" | "minorVersion" | "updatedAt"
+>;
+
 export async function touchScreenerSave(
   screenerId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; screener: ScreenerVersionSnapshot } | { ok: false; error: string }
+> {
   try {
     assertUuid(screenerId, "screener id");
-    await getScreenerById(screenerId);
+    const current = await getScreenerById(screenerId);
+    const versionUpdate = versionFieldsAfterSave({
+      status: current.status,
+      majorVersion: current.majorVersion,
+      minorVersion: current.minorVersion,
+    });
 
+    const updatedAt = new Date().toISOString();
     const supabase = createAdminClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("screeners")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", screenerId);
+      .update({
+        updated_at: updatedAt,
+        ...("status" in versionUpdate
+          ? { status: versionUpdate.status }
+          : {}),
+        minor_version: versionUpdate.minorVersion,
+      })
+      .eq("id", screenerId)
+      .select("status, major_version, minor_version, updated_at")
+      .single();
 
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath(`/workspace/screener-studio/${screenerId}`);
-    revalidatePath("/screener-studio");
-    return { ok: true };
+    const row = data as {
+      status: ScreenerStatus;
+      major_version: number;
+      minor_version: number;
+      updated_at: string;
+    };
+
+    revalidateScreenerPaths(screenerId, current.projectId);
+    return {
+      ok: true,
+      screener: {
+        status: row.status,
+        majorVersion: row.major_version,
+        minorVersion: row.minor_version,
+        updatedAt: row.updated_at,
+      },
+    };
   } catch (e) {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Could not save screener.",
     };
   }
+}
+
+export async function setScreenerToFinal(
+  screenerId: string,
+): Promise<
+  { ok: true; screener: ScreenerVersionSnapshot } | { ok: false; error: string }
+> {
+  try {
+    assertUuid(screenerId, "screener id");
+    const current = await getScreenerById(screenerId);
+    if (current.status === "final") {
+      return { ok: false, error: "Screener is already final." };
+    }
+
+    const versionUpdate = versionFieldsAfterSetFinal({
+      majorVersion: current.majorVersion,
+    });
+    const updatedAt = new Date().toISOString();
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("screeners")
+      .update({
+        status: versionUpdate.status,
+        major_version: versionUpdate.majorVersion,
+        minor_version: versionUpdate.minorVersion,
+        updated_at: updatedAt,
+      })
+      .eq("id", screenerId)
+      .select("status, major_version, minor_version, updated_at")
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+
+    const row = data as {
+      status: ScreenerStatus;
+      major_version: number;
+      minor_version: number;
+      updated_at: string;
+    };
+
+    revalidateScreenerPaths(screenerId, current.projectId);
+    return {
+      ok: true,
+      screener: {
+        status: row.status,
+        majorVersion: row.major_version,
+        minorVersion: row.minor_version,
+        updatedAt: row.updated_at,
+      },
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not mark screener as final.",
+    };
+  }
+}
+
+export async function setScreenerToDraft(
+  screenerId: string,
+): Promise<
+  { ok: true; screener: ScreenerVersionSnapshot } | { ok: false; error: string }
+> {
+  try {
+    assertUuid(screenerId, "screener id");
+    const current = await getScreenerById(screenerId);
+    if (current.status === "draft") {
+      return { ok: false, error: "Screener is already a draft." };
+    }
+
+    const versionUpdate = versionFieldsAfterSetDraft();
+    const updatedAt = new Date().toISOString();
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("screeners")
+      .update({
+        status: versionUpdate.status,
+        minor_version: versionUpdate.minorVersion,
+        updated_at: updatedAt,
+      })
+      .eq("id", screenerId)
+      .select("status, major_version, minor_version, updated_at")
+      .single();
+
+    if (error) return { ok: false, error: error.message };
+
+    const row = data as {
+      status: ScreenerStatus;
+      major_version: number;
+      minor_version: number;
+      updated_at: string;
+    };
+
+    revalidateScreenerPaths(screenerId, current.projectId);
+    return {
+      ok: true,
+      screener: {
+        status: row.status,
+        majorVersion: row.major_version,
+        minorVersion: row.minor_version,
+        updatedAt: row.updated_at,
+      },
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not set screener to draft.",
+    };
+  }
+}
+
+function revalidateScreenerPaths(screenerId: string, projectId: string) {
+  revalidatePath(`/workspace/screener-studio/${screenerId}`);
+  revalidatePath("/screener-studio");
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}`);
 }

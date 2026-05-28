@@ -1,10 +1,12 @@
-export type ScreenerStatus = "draft" | "in_progress" | "published" | "archived";
+export type ScreenerStatus = "draft" | "final";
 
 export interface ScreenerSummary {
   id: string;
   projectId: string;
   name: string;
   status: ScreenerStatus;
+  majorVersion: number;
+  minorVersion: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +25,8 @@ export interface RecentScreenerSummary {
   id: string;
   name: string;
   status: ScreenerStatus;
+  majorVersion: number;
+  minorVersion: number;
   clientName: string;
   projectName: string;
   projectNumber: string;

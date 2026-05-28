@@ -11,6 +11,7 @@ import { QualityReviewPanel } from "@/components/screener-editor/quality-review-
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import type { ProjectSpecs } from "@/lib/projects/project-specs";
+import type { ScreenerVersionSnapshot } from "@/app/actions/screeners";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 import {
   createEmptyAiChatState,
@@ -60,6 +61,27 @@ export function ScreenerEditor({
     DismissedQualityReviewIssue[]
   >([]);
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
+  const [versionMeta, setVersionMeta] = useState<ScreenerVersionSnapshot>({
+    status: screener.status,
+    majorVersion: screener.majorVersion,
+    minorVersion: screener.minorVersion,
+    updatedAt: screener.updatedAt,
+  });
+
+  const screenerForToolbar = useMemo<ScreenerWithProject>(
+    () => ({
+      ...screener,
+      ...versionMeta,
+    }),
+    [screener, versionMeta],
+  );
+
+  const handleScreenerVersionChange = useCallback(
+    (snapshot: ScreenerVersionSnapshot) => {
+      setVersionMeta(snapshot);
+    },
+    [],
+  );
 
   const qualityReviewAbortRef = useRef<AbortController | null>(null);
   const qualityReviewStopRequestedRef = useRef(false);
@@ -236,7 +258,8 @@ export function ScreenerEditor({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[hsl(var(--workspace-surface))]">
       <ScreenerEditorToolbar
-        screener={screener}
+        screener={screenerForToolbar}
+        onScreenerVersionChange={handleScreenerVersionChange}
         qualityReviewLoading={qualityReviewLoading}
         onRunQualityReview={handleQualityReviewToolbarClick}
         onStopQualityReview={stopQualityReview}
