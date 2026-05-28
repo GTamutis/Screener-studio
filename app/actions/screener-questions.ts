@@ -37,6 +37,16 @@ function editorPath(screenerId: string) {
   return `/workspace/screener-studio/${screenerId}`;
 }
 
+async function requireDraftScreener(screenerId: string) {
+  const screener = await getScreenerById(screenerId);
+  if (screener.status === "final") {
+    throw new Error(
+      "Final screeners are locked. Set the screener to Draft before editing questions.",
+    );
+  }
+  return screener;
+}
+
 function schemaHint(errorMessage: string): string | null {
   if (
     /question_type|answer_options|is_customized|notes|quota_config/i.test(
@@ -212,7 +222,7 @@ export async function addScreenerQuestionFromLibrary(input: {
   try {
     assertUuid(input.screenerId, "screener id");
     assertUuid(input.libraryQuestionId, "library question id");
-    await getScreenerById(input.screenerId);
+    await requireDraftScreener(input.screenerId);
 
     const supabase = createAdminClient();
 
@@ -293,7 +303,7 @@ async function insertScreenerQuestionWithSource(
 > {
   try {
     assertUuid(input.screenerId, "screener id");
-    await getScreenerById(input.screenerId);
+    await requireDraftScreener(input.screenerId);
 
     const validated = validateManualQuestionPayload(input);
     if (!validated.ok) return validated;
@@ -344,7 +354,7 @@ export async function updateScreenerQuestion(
   try {
     assertUuid(input.screenerId, "screener id");
     assertUuid(input.questionId, "question id");
-    await getScreenerById(input.screenerId);
+    await requireDraftScreener(input.screenerId);
 
     const validated = validateManualQuestionPayload(input);
     if (!validated.ok) return validated;
@@ -417,7 +427,7 @@ export async function reorderScreenerQuestions(input: {
 > {
   try {
     assertUuid(input.screenerId, "screener id");
-    await getScreenerById(input.screenerId);
+    await requireDraftScreener(input.screenerId);
 
     const orderedQuestionIds = input.orderedQuestionIds.map((id) => {
       assertUuid(id, "question id");
@@ -482,7 +492,7 @@ export async function deleteScreenerQuestion(input: {
   try {
     assertUuid(input.screenerId, "screener id");
     assertUuid(input.questionId, "question id");
-    await getScreenerById(input.screenerId);
+    await requireDraftScreener(input.screenerId);
 
     const supabase = createAdminClient();
     const { data: question, error: fetchError } = await supabase
