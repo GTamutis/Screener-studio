@@ -4,7 +4,8 @@ alter table screener_questions
   add column if not exists sub_position integer;
 
 -- Top-level position uniqueness only (sub-questions share parent position).
-drop index if exists screener_questions_screener_id_position_key;
+alter table screener_questions
+  drop constraint if exists screener_questions_screener_id_position_key;
 create unique index if not exists screener_questions_screener_id_position_top_level_key
   on screener_questions (screener_id, position)
   where parent_id is null;
