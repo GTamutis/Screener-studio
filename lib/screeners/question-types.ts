@@ -11,6 +11,10 @@ export interface ScreenerQuestion {
   id: string;
   screenerId: string;
   position: number;
+  /** Null for top-level questions; UUID of parent for sub-questions. */
+  parentId: string | null;
+  /** Ordering among siblings; null for top-level questions. */
+  subPosition: number | null;
   questionText: string;
   source: ScreenerQuestionSource;
   isLocked: boolean;
@@ -30,6 +34,8 @@ export type DbScreenerQuestionRow = {
   id: string;
   screener_id: string;
   position: number;
+  parent_id: string | null;
+  sub_position: number | null;
   question_text: string;
   source: ScreenerQuestionSource;
   is_locked: boolean;
@@ -44,7 +50,7 @@ export type DbScreenerQuestionRow = {
 };
 
 const SELECT_COLUMNS =
-  "id, screener_id, position, question_text, source, is_locked, is_customized, library_question_id, question_type, answer_options, notes, quota_config, created_at, updated_at";
+  "id, screener_id, position, parent_id, sub_position, question_text, source, is_locked, is_customized, library_question_id, question_type, answer_options, notes, quota_config, created_at, updated_at";
 
 export const SCREENER_QUESTION_SELECT = SELECT_COLUMNS;
 
@@ -53,6 +59,8 @@ export function mapScreenerQuestion(row: DbScreenerQuestionRow): ScreenerQuestio
     id: row.id,
     screenerId: row.screener_id,
     position: row.position,
+    parentId: row.parent_id ?? null,
+    subPosition: row.sub_position ?? null,
     questionText: row.question_text,
     source: row.source,
     isLocked: row.is_locked,
@@ -72,6 +80,15 @@ export function mapScreenerQuestion(row: DbScreenerQuestionRow): ScreenerQuestio
   };
 }
 
+/** @deprecated Use question-tree utilities for display labels. */
 export function questionLabel(position: number): string {
   return `Q${position}`;
+}
+
+export function isTopLevelQuestion(question: ScreenerQuestion): boolean {
+  return question.parentId === null;
+}
+
+export function isSubQuestion(question: ScreenerQuestion): boolean {
+  return question.parentId !== null;
 }

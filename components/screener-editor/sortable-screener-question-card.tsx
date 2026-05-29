@@ -8,22 +8,31 @@ import { cn } from "@/lib/utils";
 
 export function SortableScreenerQuestionCard({
   question,
-  displayPosition,
+  displayLabel,
+  isSubQuestion,
   selected,
   highlighted,
   onSelect,
   onDelete,
   deleting,
-  disabled,
+  dragDisabled,
+  screenerId,
+  allQuestions,
+  onQuestionsReplaced,
 }: {
   question: ScreenerQuestion;
-  displayPosition: number;
+  displayLabel: string;
+  isSubQuestion?: boolean;
   selected?: boolean;
   highlighted?: boolean;
   onSelect?: () => void;
   onDelete?: () => void;
   deleting?: boolean;
-  disabled?: boolean;
+  /** Disables drag handle only — does not affect nest/unnest actions. */
+  dragDisabled?: boolean;
+  screenerId: string;
+  allQuestions: ScreenerQuestion[];
+  onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
 }) {
   const {
     attributes,
@@ -35,7 +44,7 @@ export function SortableScreenerQuestionCard({
     isDragging,
   } = useSortable({
     id: question.id,
-    disabled,
+    disabled: dragDisabled,
   });
 
   const style = {
@@ -56,13 +65,15 @@ export function SortableScreenerQuestionCard({
       id={`question-${question.id}`}
       className={cn(
         "touch-none",
+        isSubQuestion && "ml-6 border-l border-border/60 pl-3",
         isDragging && "relative z-10 opacity-90",
         deleting && "opacity-60",
       )}
     >
       <ScreenerQuestionCard
         question={question}
-        displayPosition={displayPosition}
+        displayLabel={displayLabel}
+        isSubQuestion={isSubQuestion}
         selected={selected}
         highlighted={highlighted}
         onSelect={onSelect}
@@ -70,6 +81,10 @@ export function SortableScreenerQuestionCard({
         deleting={deleting}
         dragHandleProps={dragHandleProps}
         isDragging={isDragging}
+        screenerId={screenerId}
+        allQuestions={allQuestions}
+        onQuestionsReplaced={onQuestionsReplaced}
+        structureDisabled={deleting}
       />
     </div>
   );

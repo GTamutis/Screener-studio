@@ -15,13 +15,116 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { CornerDownRight } from "lucide-react";
 import { useMemo, useTransition } from "react";
 import { toast } from "sonner";
 
-import { reorderScreenerQuestions } from "@/app/actions/screener-questions";
+import {
+  reorderSubScreenerQuestions,
+  reorderTopLevelScreenerQuestions,
+} from "@/app/actions/screener-questions";
 import { SortableScreenerQuestionCard } from "@/components/screener-editor/sortable-screener-question-card";
-import { reorderQuestionsByIds } from "@/lib/screeners/reorder-questions";
+import {
+  reorderSubQuestionsByIds,
+  reorderTopLevelQuestionsByIds,
+  subQuestionIdsInOrder,
+  topLevelQuestionIdsInOrder,
+} from "@/lib/screeners/reorder-questions";
+import {
+  buildQuestionTree,
+  type QuestionTreeNode,
+} from "@/lib/screeners/question-tree";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
+import { cn } from "@/lib/utils";
+
+function QuestionTreeBlock({
+  screenerId,
+  questions,
+  node,
+  selectedQuestionId,
+  highlightedQuestionId,
+  onSelectQuestion,
+  onDeleteQuestion,
+  onAddSubQuestion,
+  onQuestionsReplaced,
+  deletingId,
+  dragDisabled,
+}: {
+  screenerId: string;
+  questions: ScreenerQuestion[];
+  node: QuestionTreeNode;
+  selectedQuestionId: string | null;
+  highlightedQuestionId?: string | null;
+  onSelectQuestion: (id: string) => void;
+  onDeleteQuestion: (question: ScreenerQuestion) => void;
+  onAddSubQuestion: (parentId: string) => void;
+  onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
+  deletingId: string | null;
+  dragDisabled?: boolean;
+}) {
+  const subIds = useMemo(
+    () => node.children.map((child) => child.question.id),
+    [node.children],
+  );
+
+  const canAddSubQuestion = !node.question.isLocked;
+
+  return (
+    <div className="space-y-1">
+      <SortableScreenerQuestionCard
+        screenerId={screenerId}
+        allQuestions={questions}
+        onQuestionsReplaced={onQuestionsReplaced}
+        question={node.question}
+        displayLabel={node.label}
+        selected={selectedQuestionId === node.question.id}
+        highlighted={highlightedQuestionId === node.question.id}
+        onSelect={() => onSelectQuestion(node.question.id)}
+        onDelete={() => onDeleteQuestion(node.question)}
+        deleting={deletingId === node.question.id}
+        dragDisabled={dragDisabled}
+      />
+
+      {canAddSubQuestion ? (
+        <button
+          type="button"
+          onClick={() => onAddSubQuestion(node.question.id)}
+          className={cn(
+            "ml-3 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition",
+            "hover:bg-[hsl(var(--workspace-surface))] hover:text-foreground",
+          )}
+        >
+          <CornerDownRight className="h-3.5 w-3.5" aria-hidden />
+          Add sub-question
+        </button>
+      ) : null}
+
+      {node.children.length > 0 ? (
+        <SortableContext items={subIds} strategy={verticalListSortingStrategy}>
+          <div className="space-y-4">
+            {node.children.map((child) => (
+              <SortableScreenerQuestionCard
+                key={child.question.id}
+                screenerId={screenerId}
+                allQuestions={questions}
+                onQuestionsReplaced={onQuestionsReplaced}
+                question={child.question}
+                displayLabel={child.label}
+                isSubQuestion
+                selected={selectedQuestionId === child.question.id}
+                highlighted={highlightedQuestionId === child.question.id}
+                onSelect={() => onSelectQuestion(child.question.id)}
+                onDelete={() => onDeleteQuestion(child.question)}
+                deleting={deletingId === child.question.id}
+                dragDisabled={dragDisabled || node.children.length < 2}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      ) : null}
+    </div>
+  );
+}
 
 export function ScreenerQuestionSortableList({
   screenerId,
@@ -30,6 +133,7 @@ export function ScreenerQuestionSortableList({
   highlightedQuestionId,
   onSelectQuestion,
   onDeleteQuestion,
+  onAddSubQuestion,
   onQuestionsReplaced,
   deletingId,
   reorderDisabled,
@@ -40,21 +144,27 @@ export function ScreenerQuestionSortableList({
   highlightedQuestionId?: string | null;
   onSelectQuestion: (id: string) => void;
   onDeleteQuestion: (question: ScreenerQuestion) => void;
+  onAddSubQuestion: (parentId: string) => void;
   onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
   deletingId: string | null;
   reorderDisabled?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
-  const sortedQuestions = useMemo(
-    () => [...questions].sort((a, b) => a.position - b.position),
+  const tree = useMemo(() => buildQuestionTree(questions), [questions]);
+
+  const topLevelIds = useMemo(
+    () => topLevelQuestionIdsInOrder(questions),
     [questions],
   );
 
-  const itemIds = useMemo(
-    () => sortedQuestions.map((q) => q.id),
-    [sortedQuestions],
-  );
+  const parentIdBySubId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const q of questions) {
+      if (q.parentId) map.set(q.id, q.parentId);
+    }
+    return map;
+  }, [questions]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -69,38 +179,87 @@ export function ScreenerQuestionSortableList({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = itemIds.indexOf(String(active.id));
-    const newIndex = itemIds.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    const nextIds = arrayMove(itemIds, oldIndex, newIndex);
+    const activeId = String(active.id);
+    const overId = String(over.id);
     const snapshot = questions;
-    const optimistic = reorderQuestionsByIds(questions, nextIds);
 
-    if (!optimistic) {
-      toast.error("Could not reorder questions.");
-      return;
-    }
+    const activeParentId = parentIdBySubId.get(activeId);
+    const overParentId = parentIdBySubId.get(overId);
 
-    onQuestionsReplaced(optimistic);
+    if (!activeParentId && !overParentId) {
+      const oldIndex = topLevelIds.indexOf(activeId);
+      const newIndex = topLevelIds.indexOf(overId);
+      if (oldIndex < 0 || newIndex < 0) return;
 
-    startTransition(async () => {
-      const res = await reorderScreenerQuestions({
-        screenerId,
-        orderedQuestionIds: nextIds,
-      });
-
-      if (!res.ok) {
-        onQuestionsReplaced(snapshot);
-        toast.error(res.error);
+      const nextIds = arrayMove(topLevelIds, oldIndex, newIndex);
+      const optimistic = reorderTopLevelQuestionsByIds(questions, nextIds);
+      if (!optimistic) {
+        toast.error("Could not reorder questions.");
         return;
       }
 
-      onQuestionsReplaced(res.questions);
-    });
+      onQuestionsReplaced(optimistic);
+
+      startTransition(async () => {
+        const res = await reorderTopLevelScreenerQuestions({
+          screenerId,
+          orderedQuestionIds: nextIds,
+        });
+
+        if (!res.ok) {
+          onQuestionsReplaced(snapshot);
+          toast.error(res.error);
+          return;
+        }
+
+        onQuestionsReplaced(res.questions);
+      });
+      return;
+    }
+
+    if (
+      activeParentId &&
+      overParentId &&
+      activeParentId === overParentId
+    ) {
+      const siblingIds = subQuestionIdsInOrder(questions, activeParentId);
+      const oldIndex = siblingIds.indexOf(activeId);
+      const newIndex = siblingIds.indexOf(overId);
+      if (oldIndex < 0 || newIndex < 0) return;
+
+      const nextIds = arrayMove(siblingIds, oldIndex, newIndex);
+      const optimistic = reorderSubQuestionsByIds(
+        questions,
+        activeParentId,
+        nextIds,
+      );
+      if (!optimistic) {
+        toast.error("Could not reorder sub-questions.");
+        return;
+      }
+
+      onQuestionsReplaced(optimistic);
+
+      startTransition(async () => {
+        const res = await reorderSubScreenerQuestions({
+          screenerId,
+          parentId: activeParentId,
+          orderedSubQuestionIds: nextIds,
+        });
+
+        if (!res.ok) {
+          onQuestionsReplaced(snapshot);
+          toast.error(res.error);
+          return;
+        }
+
+        onQuestionsReplaced(res.questions);
+      });
+    }
   };
 
-  const dragDisabled = reorderDisabled || pending || sortedQuestions.length < 2;
+  const dragDisabled =
+    reorderDisabled || pending || topLevelIds.length < 2;
 
   return (
     <DndContext
@@ -108,19 +267,25 @@ export function ScreenerQuestionSortableList({
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={topLevelIds}
+        strategy={verticalListSortingStrategy}
+      >
         <div className="space-y-4">
-          {sortedQuestions.map((question, index) => (
-            <SortableScreenerQuestionCard
-              key={question.id}
-              question={question}
-              displayPosition={index + 1}
-              selected={selectedQuestionId === question.id}
-              highlighted={highlightedQuestionId === question.id}
-              onSelect={() => onSelectQuestion(question.id)}
-              onDelete={() => onDeleteQuestion(question)}
-              deleting={deletingId === question.id}
-              disabled={dragDisabled}
+          {tree.map((node) => (
+            <QuestionTreeBlock
+              key={node.question.id}
+              screenerId={screenerId}
+              questions={questions}
+              node={node}
+              selectedQuestionId={selectedQuestionId}
+              highlightedQuestionId={highlightedQuestionId}
+              onSelectQuestion={onSelectQuestion}
+              onDeleteQuestion={onDeleteQuestion}
+              onAddSubQuestion={onAddSubQuestion}
+              onQuestionsReplaced={onQuestionsReplaced}
+              deletingId={deletingId}
+              dragDisabled={dragDisabled}
             />
           ))}
         </div>

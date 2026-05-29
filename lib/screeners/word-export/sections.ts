@@ -4,7 +4,6 @@ import {
   Paragraph,
   ShadingType,
   Table,
-  TableCell,
   TableRow,
   TextRun,
   VerticalAlign,
@@ -41,22 +40,6 @@ import type { WordExportPayload } from "./types";
 
 const LABEL_WIDTH = 2268;
 const VALUE_WIDTH = PAGE.contentWidth - LABEL_WIDTH;
-
-const BORDERLESS_CELL = {
-  top: { style: BorderStyle.NONE, size: 0, color: "auto" },
-  bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
-  left: { style: BorderStyle.NONE, size: 0, color: "auto" },
-  right: { style: BorderStyle.NONE, size: 0, color: "auto" },
-} as const;
-
-const BORDERLESS_TABLE = {
-  top: BORDERLESS_CELL.top,
-  bottom: BORDERLESS_CELL.bottom,
-  left: BORDERLESS_CELL.left,
-  right: BORDERLESS_CELL.right,
-  insideHorizontal: BORDERLESS_CELL.top,
-  insideVertical: BORDERLESS_CELL.top,
-};
 
 function metadataRow(label: string, value: string, placeholder = false): TableRow {
   return new TableRow({

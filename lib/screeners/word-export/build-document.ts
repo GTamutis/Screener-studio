@@ -13,6 +13,8 @@ import {
   PageBreak,
   PageNumber,
   Paragraph,
+  Tab,
+  TabStopType,
   TextRun,
   TextWrappingSide,
   TextWrappingType,
@@ -67,14 +69,15 @@ function groupQuestionsBySection(
     grouped.set(key, []);
   }
 
-  const sorted = [...questions].sort((a, b) => a.position - b.position);
+  const ordered = [...questions];
   const closingStatements: ExportQuestion[] = [];
 
-  for (const question of sorted) {
+  for (const question of ordered) {
     const section = categoryToSection(question.category, question.questionType);
     if (section === "introduction" && question.questionType === "statement") {
+      const topLevelCount = ordered.filter((q) => !q.isSubQuestion).length;
       const isLate =
-        question.position > Math.max(1, Math.floor(sorted.length * 0.75));
+        question.position > Math.max(1, Math.floor(topLevelCount * 0.75));
       if (isLate) {
         closingStatements.push(question);
         continue;
@@ -185,7 +188,19 @@ function buildHeader(logo: Buffer | null, screener: ScreenerWithProject): Header
   });
 }
 
+function footerTextRun(text: string): TextRun {
+  return new TextRun({
+    text,
+    font: FONTS.body,
+    size: SIZE_FOOTER,
+    color: COLORS.mutedGrey,
+  });
+}
+
 function buildFooter(versionLabel: string): Footer {
+  const centerTab = Math.round(PAGE.contentWidth / 2);
+  const rightTab = PAGE.contentWidth;
+
   return new Footer({
     children: [
       new Paragraph({
@@ -195,27 +210,21 @@ function buildFooter(versionLabel: string): Footer {
           line: 240,
           lineRule: "auto",
         },
+        tabStops: [
+          { type: TabStopType.CENTER, position: centerTab },
+          { type: TabStopType.RIGHT, position: rightTab },
+        ],
         children: [
-          new TextRun({
-            text: "Confidential — Day One Strategy",
-            font: FONTS.body,
-            size: SIZE_FOOTER,
-            color: COLORS.mutedGrey,
-          }),
-          new TextRun({ text: "\t" }),
+          footerTextRun("Confidential — Day One Strategy"),
+          new TextRun({ children: [new Tab()] }),
           new TextRun({
             children: [PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES],
             font: FONTS.body,
             size: SIZE_FOOTER,
             color: COLORS.mutedGrey,
           }),
-          new TextRun({ text: "\t" }),
-          new TextRun({
-            text: versionLabel,
-            font: FONTS.body,
-            size: SIZE_FOOTER,
-            color: COLORS.mutedGrey,
-          }),
+          new TextRun({ children: [new Tab()] }),
+          footerTextRun(versionLabel),
         ],
       }),
     ],
@@ -304,6 +313,7 @@ export async function buildScreenerWordDocument(
               bottom: PAGE.marginBottom,
               left: PAGE.marginLeft,
               right: PAGE.marginRight,
+              footer: PAGE.footer,
             },
           },
           titlePage: true,

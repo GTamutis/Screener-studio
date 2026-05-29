@@ -4,6 +4,9 @@ import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export type ExportQuestion = ScreenerQuestion & {
   category: QuestionLibraryCategory | null;
+  /** Computed display label, e.g. Q1 or Q2a. */
+  displayLabel: string;
+  isSubQuestion: boolean;
 };
 
 export type WordExportPayload = {

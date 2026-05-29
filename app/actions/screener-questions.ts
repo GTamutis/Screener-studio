@@ -21,6 +21,7 @@ import {
   type DbScreenerQuestionRow,
   type ScreenerQuestion,
 } from "@/lib/screeners/question-types";
+import { sortScreenerQuestions } from "@/lib/screeners/question-tree";
 import { normalizeWhitespace } from "@/lib/invitely/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -39,12 +40,12 @@ function editorPath(screenerId: string) {
 
 function schemaHint(errorMessage: string): string | null {
   if (
-    /question_type|answer_options|is_customized|notes|quota_config/i.test(
+    /question_type|answer_options|is_customized|notes|quota_config|parent_id|sub_position/i.test(
       errorMessage,
     ) &&
     /column|schema cache/i.test(errorMessage)
   ) {
-    return "Database schema is out of date. Run migrations 011–014 in the Supabase SQL editor, then try again.";
+    return "Database schema is out of date. Run the latest Supabase migrations, then try again.";
   }
   return null;
 }
@@ -101,7 +102,27 @@ type QuestionAnswerOptionsResult = ReturnType<
   typeof normalizeManualAnswerOptions
 > | null;
 
-async function nextScreenerQuestionPosition(
+async function fetchScreenerQuestionsOrdered(
+  screenerId: string,
+): Promise<ScreenerQuestion[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("screener_questions")
+    .select(SCREENER_QUESTION_SELECT)
+    .eq("screener_id", screenerId)
+    .order("position", { ascending: true })
+    .order("sub_position", { ascending: true, nullsFirst: true });
+
+  if (error) throw new Error(error.message);
+
+  return sortScreenerQuestions(
+    (data ?? []).map((row) =>
+      mapScreenerQuestion(row as DbScreenerQuestionRow),
+    ),
+  );
+}
+
+async function nextTopLevelQuestionPosition(
   screenerId: string,
 ): Promise<number> {
   const supabase = createAdminClient();
@@ -109,6 +130,7 @@ async function nextScreenerQuestionPosition(
     .from("screener_questions")
     .select("position")
     .eq("screener_id", screenerId)
+    .is("parent_id", null)
     .order("position", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -117,48 +139,122 @@ async function nextScreenerQuestionPosition(
   return ((lastQuestion?.position as number | undefined) ?? 0) + 1;
 }
 
-/** Avoid unique (screener_id, position) collisions while rewriting order. */
-async function applyScreenerQuestionOrder(
+async function nextSubQuestionPosition(
   screenerId: string,
-  orderedQuestionIds: string[],
+  parentId: string,
+): Promise<number> {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("screener_questions")
+    .select("id", { count: "exact", head: true })
+    .eq("screener_id", screenerId)
+    .eq("parent_id", parentId);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function validateParentQuestion(
+  screenerId: string,
+  parentId: string,
+): Promise<{ ok: true; position: number } | { ok: false; error: string }> {
+  const supabase = createAdminClient();
+  const { data: parent, error } = await supabase
+    .from("screener_questions")
+    .select("id, parent_id, position")
+    .eq("id", parentId)
+    .eq("screener_id", screenerId)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!parent) return { ok: false, error: "Parent question not found." };
+  if (parent.parent_id) {
+    return {
+      ok: false,
+      error: "Sub-questions cannot have their own sub-questions.",
+    };
+  }
+
+  return { ok: true, position: parent.position as number };
+}
+
+/** Avoid unique (screener_id, position) collisions while rewriting top-level order. */
+async function applyTopLevelQuestionOrder(
+  screenerId: string,
+  orderedTopLevelIds: string[],
 ): Promise<ScreenerQuestion[]> {
   const supabase = createAdminClient();
   const tempOffset = 10_000;
 
-  for (let index = 0; index < orderedQuestionIds.length; index++) {
-    const { error } = await supabase
+  for (let index = 0; index < orderedTopLevelIds.length; index++) {
+    const newPosition = index + 1;
+    const questionId = orderedTopLevelIds[index];
+
+    const { error: parentError } = await supabase
       .from("screener_questions")
-      .update({ position: tempOffset + index })
-      .eq("id", orderedQuestionIds[index])
+      .update({ position: tempOffset + newPosition })
+      .eq("id", questionId)
+      .eq("screener_id", screenerId)
+      .is("parent_id", null);
+
+    if (parentError) throw new Error(parentError.message);
+
+    const { error: childrenError } = await supabase
+      .from("screener_questions")
+      .update({ position: tempOffset + newPosition })
+      .eq("parent_id", questionId)
       .eq("screener_id", screenerId);
 
-    if (error) throw new Error(error.message);
+    if (childrenError) throw new Error(childrenError.message);
   }
 
-  for (let index = 0; index < orderedQuestionIds.length; index++) {
-    const { error } = await supabase
+  for (let index = 0; index < orderedTopLevelIds.length; index++) {
+    const newPosition = index + 1;
+    const questionId = orderedTopLevelIds[index];
+
+    const { error: parentError } = await supabase
       .from("screener_questions")
-      .update({ position: index + 1 })
-      .eq("id", orderedQuestionIds[index])
+      .update({ position: newPosition })
+      .eq("id", questionId)
+      .eq("screener_id", screenerId)
+      .is("parent_id", null);
+
+    if (parentError) throw new Error(parentError.message);
+
+    const { error: childrenError } = await supabase
+      .from("screener_questions")
+      .update({ position: newPosition })
+      .eq("parent_id", questionId)
       .eq("screener_id", screenerId);
 
-    if (error) throw new Error(error.message);
+    if (childrenError) throw new Error(childrenError.message);
   }
 
-  const { data, error: fetchError } = await supabase
-    .from("screener_questions")
-    .select(SCREENER_QUESTION_SELECT)
-    .eq("screener_id", screenerId)
-    .order("position", { ascending: true });
-
-  if (fetchError) throw new Error(fetchError.message);
-
-  return (data ?? []).map((row) =>
-    mapScreenerQuestion(row as DbScreenerQuestionRow),
-  );
+  return fetchScreenerQuestionsOrdered(screenerId);
 }
 
-async function renumberScreenerQuestions(
+async function applySubQuestionOrder(
+  screenerId: string,
+  parentId: string,
+  orderedSubIds: string[],
+): Promise<ScreenerQuestion[]> {
+  const supabase = createAdminClient();
+
+  for (let index = 0; index < orderedSubIds.length; index++) {
+    const { error } = await supabase
+      .from("screener_questions")
+      .update({ sub_position: index })
+      .eq("id", orderedSubIds[index])
+      .eq("screener_id", screenerId)
+      .eq("parent_id", parentId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  return fetchScreenerQuestionsOrdered(screenerId);
+}
+
+async function renumberTopLevelQuestions(
   screenerId: string,
 ): Promise<ScreenerQuestion[]> {
   const supabase = createAdminClient();
@@ -166,14 +262,15 @@ async function renumberScreenerQuestions(
     .from("screener_questions")
     .select("id")
     .eq("screener_id", screenerId)
+    .is("parent_id", null)
     .order("position", { ascending: true });
 
   if (fetchError) throw new Error(fetchError.message);
 
   const orderedIds = (remaining ?? []).map((row) => row.id as string);
-  if (orderedIds.length === 0) return [];
+  if (orderedIds.length === 0) return fetchScreenerQuestionsOrdered(screenerId);
 
-  return applyScreenerQuestionOrder(screenerId, orderedIds);
+  return applyTopLevelQuestionOrder(screenerId, orderedIds);
 }
 
 export async function listScreenerQuestions(
@@ -182,19 +279,7 @@ export async function listScreenerQuestions(
   try {
     assertUuid(screenerId, "screener id");
     await getScreenerById(screenerId);
-
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("screener_questions")
-      .select(SCREENER_QUESTION_SELECT)
-      .eq("screener_id", screenerId)
-      .order("position", { ascending: true });
-
-    if (error) return { error: error.message };
-
-    return (data ?? []).map((row) =>
-      mapScreenerQuestion(row as DbScreenerQuestionRow),
-    );
+    return await fetchScreenerQuestionsOrdered(screenerId);
   } catch (e) {
     return {
       error:
@@ -206,6 +291,7 @@ export async function listScreenerQuestions(
 export async function addScreenerQuestionFromLibrary(input: {
   screenerId: string;
   libraryQuestionId: string;
+  parentId?: string | null;
 }): Promise<
   { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
 > {
@@ -230,7 +316,24 @@ export async function addScreenerQuestionFromLibrary(input: {
       return { ok: false, error: "Library question not found or not approved." };
     }
 
-    const nextPosition = await nextScreenerQuestionPosition(input.screenerId);
+    let position: number;
+    let parentId: string | null = null;
+    let subPosition: number | null = null;
+
+    if (input.parentId) {
+      assertUuid(input.parentId, "parent id");
+      const parentCheck = await validateParentQuestion(
+        input.screenerId,
+        input.parentId,
+      );
+      if (!parentCheck.ok) return parentCheck;
+      parentId = input.parentId;
+      position = parentCheck.position;
+      subPosition = await nextSubQuestionPosition(input.screenerId, parentId);
+    } else {
+      position = await nextTopLevelQuestionPosition(input.screenerId);
+    }
+
     const answerOptions = cloneAnswerOptions(
       libraryQuestion.answer_options as QuestionAnswerOption[] | null,
     );
@@ -239,7 +342,9 @@ export async function addScreenerQuestionFromLibrary(input: {
       .from("screener_questions")
       .insert({
         screener_id: input.screenerId,
-        position: nextPosition,
+        position,
+        parent_id: parentId,
+        sub_position: subPosition,
         question_text: libraryQuestion.question_text,
         question_type: libraryQuestion.question_type,
         answer_options: answerOptions.length > 0 ? answerOptions : null,
@@ -252,7 +357,10 @@ export async function addScreenerQuestionFromLibrary(input: {
       .select(SCREENER_QUESTION_SELECT)
       .single();
 
-    if (insertError) return { ok: false, error: insertError.message };
+    if (insertError) {
+      const hint = schemaHint(insertError.message);
+      return { ok: false, error: hint ?? insertError.message };
+    }
 
     revalidatePath(editorPath(input.screenerId));
 
@@ -270,7 +378,7 @@ export async function addScreenerQuestionFromLibrary(input: {
 }
 
 export async function addManualScreenerQuestion(
-  input: { screenerId: string } & ManualQuestionPayload,
+  input: { screenerId: string; parentId?: string | null } & ManualQuestionPayload,
 ): Promise<
   { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
 > {
@@ -278,7 +386,7 @@ export async function addManualScreenerQuestion(
 }
 
 export async function addAiDraftScreenerQuestion(
-  input: { screenerId: string } & ManualQuestionPayload,
+  input: { screenerId: string; parentId?: string | null } & ManualQuestionPayload,
 ): Promise<
   { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
 > {
@@ -286,7 +394,7 @@ export async function addAiDraftScreenerQuestion(
 }
 
 async function insertScreenerQuestionWithSource(
-  input: { screenerId: string } & ManualQuestionPayload,
+  input: { screenerId: string; parentId?: string | null } & ManualQuestionPayload,
   source: "manual" | "ai_draft",
 ): Promise<
   { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
@@ -299,13 +407,32 @@ async function insertScreenerQuestionWithSource(
     if (!validated.ok) return validated;
 
     const supabase = createAdminClient();
-    const nextPosition = await nextScreenerQuestionPosition(input.screenerId);
+
+    let position: number;
+    let parentId: string | null = null;
+    let subPosition: number | null = null;
+
+    if (input.parentId) {
+      assertUuid(input.parentId, "parent id");
+      const parentCheck = await validateParentQuestion(
+        input.screenerId,
+        input.parentId,
+      );
+      if (!parentCheck.ok) return parentCheck;
+      parentId = input.parentId;
+      position = parentCheck.position;
+      subPosition = await nextSubQuestionPosition(input.screenerId, parentId);
+    } else {
+      position = await nextTopLevelQuestionPosition(input.screenerId);
+    }
 
     const { data: inserted, error: insertError } = await supabase
       .from("screener_questions")
       .insert({
         screener_id: input.screenerId,
-        position: nextPosition,
+        position,
+        parent_id: parentId,
+        sub_position: subPosition,
         question_text: validated.questionText,
         question_type: input.questionType,
         answer_options: validated.answerOptions,
@@ -318,7 +445,10 @@ async function insertScreenerQuestionWithSource(
       .select(SCREENER_QUESTION_SELECT)
       .single();
 
-    if (insertError) return { ok: false, error: insertError.message };
+    if (insertError) {
+      const hint = schemaHint(insertError.message);
+      return { ok: false, error: hint ?? insertError.message };
+    }
 
     revalidatePath(editorPath(input.screenerId));
 
@@ -415,6 +545,16 @@ export async function reorderScreenerQuestions(input: {
   | { ok: true; questions: ScreenerQuestion[] }
   | { ok: false; error: string }
 > {
+  return reorderTopLevelScreenerQuestions(input);
+}
+
+export async function reorderTopLevelScreenerQuestions(input: {
+  screenerId: string;
+  orderedQuestionIds: string[];
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
   try {
     assertUuid(input.screenerId, "screener id");
     await getScreenerById(input.screenerId);
@@ -437,7 +577,8 @@ export async function reorderScreenerQuestions(input: {
     const { data: existing, error: fetchError } = await supabase
       .from("screener_questions")
       .select("id")
-      .eq("screener_id", input.screenerId);
+      .eq("screener_id", input.screenerId)
+      .is("parent_id", null);
 
     if (fetchError) return { ok: false, error: fetchError.message };
 
@@ -445,18 +586,21 @@ export async function reorderScreenerQuestions(input: {
     if (existingIds.length !== orderedQuestionIds.length) {
       return {
         ok: false,
-        error: "Reorder list must include every question in this screener.",
+        error: "Reorder list must include every top-level question.",
       };
     }
 
     const existingSet = new Set(existingIds);
     for (const id of orderedQuestionIds) {
       if (!existingSet.has(id)) {
-        return { ok: false, error: "One or more questions do not belong to this screener." };
+        return {
+          ok: false,
+          error: "One or more questions do not belong to this screener.",
+        };
       }
     }
 
-    const questions = await applyScreenerQuestionOrder(
+    const questions = await applyTopLevelQuestionOrder(
       input.screenerId,
       orderedQuestionIds,
     );
@@ -468,6 +612,74 @@ export async function reorderScreenerQuestions(input: {
       ok: false,
       error:
         e instanceof Error ? e.message : "Could not reorder screener questions.",
+    };
+  }
+}
+
+export async function reorderSubScreenerQuestions(input: {
+  screenerId: string;
+  parentId: string;
+  orderedSubQuestionIds: string[];
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    assertUuid(input.parentId, "parent id");
+    await getScreenerById(input.screenerId);
+
+    const parentCheck = await validateParentQuestion(
+      input.screenerId,
+      input.parentId,
+    );
+    if (!parentCheck.ok) return parentCheck;
+
+    const orderedSubQuestionIds = input.orderedSubQuestionIds.map((id) => {
+      assertUuid(id, "question id");
+      return id;
+    });
+
+    const supabase = createAdminClient();
+    const { data: existing, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select("id")
+      .eq("screener_id", input.screenerId)
+      .eq("parent_id", input.parentId);
+
+    if (fetchError) return { ok: false, error: fetchError.message };
+
+    const existingIds = (existing ?? []).map((row) => row.id as string);
+    if (existingIds.length !== orderedSubQuestionIds.length) {
+      return {
+        ok: false,
+        error: "Reorder list must include every sub-question for this parent.",
+      };
+    }
+
+    const existingSet = new Set(existingIds);
+    for (const id of orderedSubQuestionIds) {
+      if (!existingSet.has(id)) {
+        return {
+          ok: false,
+          error: "One or more sub-questions do not belong to this parent.",
+        };
+      }
+    }
+
+    const questions = await applySubQuestionOrder(
+      input.screenerId,
+      input.parentId,
+      orderedSubQuestionIds,
+    );
+
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not reorder sub-questions.",
     };
   }
 }
@@ -487,7 +699,7 @@ export async function deleteScreenerQuestion(input: {
     const supabase = createAdminClient();
     const { data: question, error: fetchError } = await supabase
       .from("screener_questions")
-      .select("id, is_locked")
+      .select("id, is_locked, parent_id")
       .eq("id", input.questionId)
       .eq("screener_id", input.screenerId)
       .maybeSingle();
@@ -506,7 +718,267 @@ export async function deleteScreenerQuestion(input: {
 
     if (error) return { ok: false, error: error.message };
 
-    const questions = await renumberScreenerQuestions(input.screenerId);
+    let questions: ScreenerQuestion[];
+
+    if (question.parent_id) {
+      const parentId = question.parent_id as string;
+      const { data: remainingSubs, error: subsError } = await supabase
+        .from("screener_questions")
+        .select("id")
+        .eq("screener_id", input.screenerId)
+        .eq("parent_id", parentId)
+        .order("sub_position", { ascending: true });
+
+      if (subsError) return { ok: false, error: subsError.message };
+
+      const remainingIds = (remainingSubs ?? []).map((row) => row.id as string);
+      questions =
+        remainingIds.length > 0
+          ? await applySubQuestionOrder(
+              input.screenerId,
+              parentId,
+              remainingIds,
+            )
+          : await fetchScreenerQuestionsOrdered(input.screenerId);
+    } else {
+      questions = await renumberTopLevelQuestions(input.screenerId);
+    }
+
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not delete question.",
+    };
+  }
+}
+
+export async function nestScreenerQuestionUnderParent(input: {
+  screenerId: string;
+  questionId: string;
+  parentId: string;
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    assertUuid(input.questionId, "question id");
+    assertUuid(input.parentId, "parent id");
+    await getScreenerById(input.screenerId);
+
+    if (input.questionId === input.parentId) {
+      return { ok: false, error: "A question cannot be nested under itself." };
+    }
+
+    const supabase = createAdminClient();
+    const { data: question, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select("id, parent_id")
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .maybeSingle();
+
+    if (fetchError) return { ok: false, error: fetchError.message };
+    if (!question) return { ok: false, error: "Question not found." };
+
+    const { count: childCount, error: childError } = await supabase
+      .from("screener_questions")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", input.questionId)
+      .eq("screener_id", input.screenerId);
+
+    if (childError) return { ok: false, error: childError.message };
+    if ((childCount ?? 0) > 0) {
+      return {
+        ok: false,
+        error:
+          "Questions with sub-questions cannot be nested under another question.",
+      };
+    }
+
+    const parentCheck = await validateParentQuestion(
+      input.screenerId,
+      input.parentId,
+    );
+    if (!parentCheck.ok) return parentCheck;
+
+    if (question.parent_id === input.parentId) {
+      const questions = await fetchScreenerQuestionsOrdered(input.screenerId);
+      return { ok: true, questions };
+    }
+
+    const oldParentId = question.parent_id as string | null;
+    const subPosition = await nextSubQuestionPosition(
+      input.screenerId,
+      input.parentId,
+    );
+
+    const { error: updateError } = await supabase
+      .from("screener_questions")
+      .update({
+        parent_id: input.parentId,
+        position: parentCheck.position,
+        sub_position: subPosition,
+      })
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId);
+
+    if (updateError) return { ok: false, error: updateError.message };
+
+    if (oldParentId) {
+      const { data: remainingSubs, error: subsError } = await supabase
+        .from("screener_questions")
+        .select("id")
+        .eq("screener_id", input.screenerId)
+        .eq("parent_id", oldParentId)
+        .order("sub_position", { ascending: true });
+
+      if (subsError) return { ok: false, error: subsError.message };
+
+      const remainingIds = (remainingSubs ?? []).map((row) => row.id as string);
+      if (remainingIds.length > 0) {
+        await applySubQuestionOrder(
+          input.screenerId,
+          oldParentId,
+          remainingIds,
+        );
+      }
+    } else {
+      await renumberTopLevelQuestions(input.screenerId);
+    }
+
+    const questions = await fetchScreenerQuestionsOrdered(input.screenerId);
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not nest question.",
+    };
+  }
+}
+
+export async function unnestScreenerQuestionToTopLevel(input: {
+  screenerId: string;
+  questionId: string;
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    assertUuid(input.questionId, "question id");
+    await getScreenerById(input.screenerId);
+
+    const supabase = createAdminClient();
+    const { data: question, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select("id, parent_id")
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .maybeSingle();
+
+    if (fetchError) return { ok: false, error: fetchError.message };
+    if (!question) return { ok: false, error: "Question not found." };
+    if (!question.parent_id) {
+      const questions = await fetchScreenerQuestionsOrdered(input.screenerId);
+      return { ok: true, questions };
+    }
+
+    const oldParentId = question.parent_id as string;
+    const newPosition = await nextTopLevelQuestionPosition(input.screenerId);
+
+    const { error: updateError } = await supabase
+      .from("screener_questions")
+      .update({
+        parent_id: null,
+        sub_position: null,
+        position: newPosition,
+      })
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId);
+
+    if (updateError) return { ok: false, error: updateError.message };
+
+    const { data: remainingSubs, error: subsError } = await supabase
+      .from("screener_questions")
+      .select("id")
+      .eq("screener_id", input.screenerId)
+      .eq("parent_id", oldParentId)
+      .order("sub_position", { ascending: true });
+
+    if (subsError) return { ok: false, error: subsError.message };
+
+    const remainingIds = (remainingSubs ?? []).map((row) => row.id as string);
+    if (remainingIds.length > 0) {
+      await applySubQuestionOrder(input.screenerId, oldParentId, remainingIds);
+    }
+
+    const questions = await fetchScreenerQuestionsOrdered(input.screenerId);
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not move question to top level.",
+    };
+  }
+}
+
+export async function deleteScreenerQuestionWithChildren(input: {
+  screenerId: string;
+  questionId: string;
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[] }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    assertUuid(input.questionId, "question id");
+    await getScreenerById(input.screenerId);
+
+    const supabase = createAdminClient();
+    const { data: question, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select("id, is_locked, parent_id")
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .maybeSingle();
+
+    if (fetchError) return { ok: false, error: fetchError.message };
+    if (!question) return { ok: false, error: "Question not found." };
+    if (question.is_locked) {
+      return { ok: false, error: "Locked questions cannot be deleted." };
+    }
+    if (question.parent_id) {
+      return deleteScreenerQuestion(input);
+    }
+
+    const { error: deleteChildrenError } = await supabase
+      .from("screener_questions")
+      .delete()
+      .eq("parent_id", input.questionId)
+      .eq("screener_id", input.screenerId);
+
+    if (deleteChildrenError) {
+      return { ok: false, error: deleteChildrenError.message };
+    }
+
+    const { error: deleteParentError } = await supabase
+      .from("screener_questions")
+      .delete()
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId);
+
+    if (deleteParentError) {
+      return { ok: false, error: deleteParentError.message };
+    }
+
+    const questions = await renumberTopLevelQuestions(input.screenerId);
 
     revalidatePath(editorPath(input.screenerId));
     return { ok: true, questions };

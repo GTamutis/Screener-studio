@@ -1,11 +1,22 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Loader2, Lock, Plus, Search } from "lucide-react";
+import { ChevronDown, Loader2, Lock, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { addScreenerQuestionFromLibrary } from "@/app/actions/screener-questions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   CATEGORY_LABELS,
@@ -15,6 +26,7 @@ import {
 } from "@/lib/question-library/constants";
 import { filterLibraryQuestions } from "@/lib/question-library/filter";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
+import { buildQuestionTree } from "@/lib/screeners/question-tree";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
@@ -28,12 +40,16 @@ function LibraryQuestionRow({
   question,
   alreadyAdded,
   adding,
+  topLevelParents,
   onAdd,
+  onAddAsSub,
 }: {
   question: QuestionLibraryItem;
   alreadyAdded: boolean;
   adding: boolean;
+  topLevelParents: { id: string; label: string }[];
   onAdd: () => void;
+  onAddAsSub: (parentId: string) => void;
 }) {
   const typeLabel =
     QUESTION_TYPE_LABELS[question.questionType] ?? question.questionType;
@@ -63,20 +79,63 @@ function LibraryQuestionRow({
         </div>
       </div>
 
-      <Button
-        type="button"
-        size="sm"
-        className="mt-3 h-8 w-full gap-1.5 text-xs"
-        disabled={alreadyAdded || adding}
-        onClick={onAdd}
-      >
-        {adding ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Plus className="h-3.5 w-3.5" />
-        )}
-        {alreadyAdded ? "Added" : "Add to screener"}
-      </Button>
+      <div className="mt-3 flex">
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 flex-1 gap-1.5 rounded-r-none text-xs"
+          disabled={alreadyAdded || adding}
+          onClick={onAdd}
+        >
+          {adding ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+          {alreadyAdded ? "Added" : "Add to screener"}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-l-none border-l border-primary-foreground/20 px-2"
+              disabled={alreadyAdded || adding}
+              aria-label="More add options"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem disabled={alreadyAdded || adding} onClick={onAdd}>
+              Add to screener
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {topLevelParents.length === 0 ? (
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Add a top-level question first
+              </DropdownMenuLabel>
+            ) : (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled={alreadyAdded || adding}>
+                  Add as sub-question of…
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  {topLevelParents.map((parent) => (
+                    <DropdownMenuItem
+                      key={parent.id}
+                      disabled={alreadyAdded || adding}
+                      onClick={() => onAddAsSub(parent.id)}
+                    >
+                      {parent.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </li>
   );
 }
@@ -108,24 +167,36 @@ export function ScreenerEditorLibraryPanel({
     [screenerQuestions],
   );
 
+  const topLevelParents = useMemo(
+    () =>
+      buildQuestionTree(screenerQuestions).map((node) => ({
+        id: node.question.id,
+        label: node.label,
+      })),
+    [screenerQuestions],
+  );
+
   const filtered = useMemo(
     () => filterLibraryQuestions(libraryQuestions, query, categoryFilter),
     [libraryQuestions, query, categoryFilter],
   );
 
-  const handleAdd = (libraryQuestionId: string) => {
+  const handleAdd = (libraryQuestionId: string, parentId?: string | null) => {
     setAddingId(libraryQuestionId);
     startTransition(async () => {
       const res = await addScreenerQuestionFromLibrary({
         screenerId,
         libraryQuestionId,
+        parentId: parentId ?? undefined,
       });
       setAddingId(null);
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success("Question added to screener.");
+      toast.success(
+        parentId ? "Sub-question added to screener." : "Question added to screener.",
+      );
       onQuestionAdded(res.question);
     });
   };
@@ -185,7 +256,9 @@ export function ScreenerEditorLibraryPanel({
               question={question}
               alreadyAdded={addedLibraryIds.has(question.id)}
               adding={pending && addingId === question.id}
+              topLevelParents={topLevelParents}
               onAdd={() => handleAdd(question.id)}
+              onAddAsSub={(parentId) => handleAdd(question.id, parentId)}
             />
           ))
         )}

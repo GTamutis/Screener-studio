@@ -12,9 +12,7 @@ import {
   type ITableCellOptions,
 } from "docx";
 
-import type { QuestionAnswerOption } from "@/lib/question-library/types";
 import type { QuestionLibraryType } from "@/lib/question-library/types";
-import { questionLabel } from "@/lib/screeners/question-types";
 
 import {
   COLORS,
@@ -37,13 +35,13 @@ import {
 } from "./styles";
 import type { ExportQuestion } from "./types";
 
-function questionNumberPrefix(position: number): string {
-  return `${questionLabel(position)}. `;
+function questionNumberPrefix(displayLabel: string): string {
+  return `${displayLabel}. `;
 }
 
 function questionHeaderParagraph(question: ExportQuestion): Paragraph {
   const children: TextRun[] = [
-    bodyRun(questionNumberPrefix(question.position), { bold: true }),
+    bodyRun(questionNumberPrefix(question.displayLabel), { bold: true }),
     ...statementTextRuns(question.questionText),
   ];
 
@@ -103,75 +101,7 @@ function routingRun(style: NonNullable<ReturnType<typeof resolveRoutingStyle>>):
   });
 }
 
-function answerOptionsTable(options: QuestionAnswerOption[]): Table {
-  const rows = options
-    .filter((o) => o.text.trim().length > 0)
-    .map((option, index) => {
-      const routing = resolveRoutingStyle(option);
-
-      return new TableRow({
-        cantSplit: true,
-        children: [
-          answerTableCell(
-            [
-              tableCellParagraph([
-                bodyRun(option.text.replace(/_{3,}/g, "____________")),
-              ]),
-            ],
-            QUESTION_COL_OPTION,
-          ),
-          answerTableCell(
-            [
-              tableCellParagraph(
-                [bodyRun(String(index + 1))],
-                AlignmentType.CENTER,
-              ),
-            ],
-            QUESTION_COL_CODE,
-          ),
-          answerTableCell(
-            [
-              tableCellParagraph(routing ? [routingRun(routing)] : []),
-            ],
-            QUESTION_COL_ROUTING,
-          ),
-        ],
-      });
-    });
-
-  return borderedTable(rows, {
-    width: { size: QUESTION_TABLE_WIDTH, type: WidthType.DXA },
-  });
-}
-
-function openEndedEntryTable(): Table {
-  return borderedTable([
-    new TableRow({
-      cantSplit: true,
-      children: [
-        answerTableCell(
-          [
-            tableCellParagraph([
-              new TextRun({
-                text: "Enter response here:",
-                font: FONTS.body,
-                size: SIZE_BODY,
-                italics: true,
-                color: COLORS.mutedGrey,
-              }),
-            ]),
-          ],
-          PAGE.contentWidth,
-          {
-            shading: { fill: COLORS.lightGreyFill, type: ShadingType.CLEAR },
-          },
-        ),
-      ],
-    }),
-  ]);
-}
-
-function gridQuestionTable(question: ExportQuestion, position: number): Table {
+function gridQuestionTable(question: ExportQuestion): Table {
   const options = question.answerOptions.filter((o) => o.text.trim());
   const headerCells = [
     tableCell([bodyParagraph([bodyRun("")])], {
@@ -205,7 +135,7 @@ function gridQuestionTable(question: ExportQuestion, position: number): Table {
     children: [
       tableCell([
         bodyParagraph([
-          bodyRun(questionNumberPrefix(position), { bold: true }),
+          bodyRun(questionNumberPrefix(question.displayLabel), { bold: true }),
           ...statementTextRuns(question.questionText),
         ]),
       ]),
@@ -254,7 +184,7 @@ function renderQuestionBody(question: ExportQuestion): FileChild[] {
   }
 
   if (type === "grid") {
-    return [gridQuestionTable(question, question.position)];
+    return [gridQuestionTable(question)];
   }
 
   const hasOptions =
@@ -266,10 +196,79 @@ function renderQuestionBody(question: ExportQuestion): FileChild[] {
       type !== "scale");
 
   if (!hasOptions) {
-    return [openEndedEntryTable()];
+    return [
+      borderedTable(
+        [
+          new TableRow({
+            cantSplit: true,
+            children: [
+              answerTableCell(
+                [
+                  tableCellParagraph([
+                    new TextRun({
+                      text: "Enter response here:",
+                      font: FONTS.body,
+                      size: SIZE_BODY,
+                      italics: true,
+                      color: COLORS.mutedGrey,
+                    }),
+                  ]),
+                ],
+                PAGE.contentWidth,
+                {
+                  shading: {
+                    fill: COLORS.lightGreyFill,
+                    type: ShadingType.CLEAR,
+                  },
+                },
+              ),
+            ],
+          }),
+        ],
+        { width: { size: PAGE.contentWidth, type: WidthType.DXA } },
+      ),
+    ];
   }
 
-  return [answerOptionsTable(question.answerOptions)];
+  return [
+    borderedTable(
+      question.answerOptions
+        .filter((o) => o.text.trim().length > 0)
+        .map((option, index) => {
+          const routing = resolveRoutingStyle(option);
+
+          return new TableRow({
+            cantSplit: true,
+            children: [
+              answerTableCell(
+                [
+                  tableCellParagraph([
+                    bodyRun(option.text.replace(/_{3,}/g, "____________")),
+                  ]),
+                ],
+                QUESTION_COL_OPTION,
+              ),
+              answerTableCell(
+                [
+                  tableCellParagraph(
+                    [bodyRun(String(index + 1))],
+                    AlignmentType.CENTER,
+                  ),
+                ],
+                QUESTION_COL_CODE,
+              ),
+              answerTableCell(
+                [
+                  tableCellParagraph(routing ? [routingRun(routing)] : []),
+                ],
+                QUESTION_COL_ROUTING,
+              ),
+            ],
+          });
+        }),
+      { width: { size: QUESTION_TABLE_WIDTH, type: WidthType.DXA } },
+    ),
+  ];
 }
 
 function recruitingNotesBlock(question: ExportQuestion): FileChild[] {

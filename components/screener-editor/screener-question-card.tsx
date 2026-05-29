@@ -5,13 +5,11 @@ import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { GripVertical, Lock, Trash2 } from "lucide-react";
 
 import { AnswerOptionsTable } from "@/components/screener-editor/answer-options-table";
+import { ScreenerQuestionNestMenu } from "@/components/screener-editor/screener-question-nest-menu";
 import { QuestionSourceBadge } from "@/components/screener-editor/question-source-badge";
 import { Button } from "@/components/ui/button";
 import { QUESTION_TYPE_LABELS } from "@/lib/question-library/constants";
-import {
-  questionLabel,
-  type ScreenerQuestion,
-} from "@/lib/screeners/question-types";
+import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
 export type ScreenerQuestionDragHandleProps = {
@@ -22,7 +20,8 @@ export type ScreenerQuestionDragHandleProps = {
 
 export function ScreenerQuestionCard({
   question,
-  displayPosition,
+  displayLabel,
+  isSubQuestion,
   selected,
   highlighted,
   onSelect,
@@ -30,10 +29,15 @@ export function ScreenerQuestionCard({
   deleting,
   dragHandleProps,
   isDragging,
+  screenerId,
+  allQuestions,
+  onQuestionsReplaced,
+  structureDisabled,
 }: {
   question: ScreenerQuestion;
-  /** Visual order in the list (Q1, Q2, …); defaults to stored position. */
-  displayPosition?: number;
+  /** Computed label, e.g. Q1 or Q2a. */
+  displayLabel: string;
+  isSubQuestion?: boolean;
   selected?: boolean;
   highlighted?: boolean;
   onSelect?: () => void;
@@ -41,8 +45,11 @@ export function ScreenerQuestionCard({
   deleting?: boolean;
   dragHandleProps?: ScreenerQuestionDragHandleProps;
   isDragging?: boolean;
+  screenerId?: string;
+  allQuestions?: ScreenerQuestion[];
+  onQuestionsReplaced?: (questions: ScreenerQuestion[]) => void;
+  structureDisabled?: boolean;
 }) {
-  const label = questionLabel(displayPosition ?? question.position);
   const typeLabel = question.questionType
     ? QUESTION_TYPE_LABELS[question.questionType] ?? question.questionType
     : null;
@@ -61,6 +68,7 @@ export function ScreenerQuestionCard({
       className={cn(
         "group flex gap-3 rounded-xl border border-border/80 bg-[hsl(var(--workspace-panel))] p-5 shadow-sm transition",
         "hover:border-border hover:shadow-md",
+        isSubQuestion && "border-l-2 border-l-border/80",
         selected &&
           "ring-2 ring-blue-500 ring-offset-2 ring-offset-[hsl(var(--workspace-surface))] dark:ring-offset-[hsl(var(--workspace-surface))]",
         highlighted &&
@@ -87,7 +95,7 @@ export function ScreenerQuestionCard({
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-muted dark:text-foreground">
-            {label}
+            {displayLabel}
           </span>
           <QuestionSourceBadge source={question.source} />
           {typeLabel ? (
@@ -130,22 +138,35 @@ export function ScreenerQuestionCard({
           </p>
         ) : null}
 
-        {!question.isLocked ? (
+        {(screenerId && allQuestions && onQuestionsReplaced) ||
+        !question.isLocked ? (
           <div
-            className="flex gap-2 pt-1"
+            className="flex flex-wrap items-center gap-2 pt-1"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))] text-xs font-medium text-destructive hover:bg-destructive/5 hover:text-destructive"
-              disabled={deleting}
-              onClick={onDelete}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
+            {screenerId && allQuestions && onQuestionsReplaced ? (
+              <ScreenerQuestionNestMenu
+                screenerId={screenerId}
+                question={question}
+                allQuestions={allQuestions}
+                onQuestionsReplaced={onQuestionsReplaced}
+                disabled={structureDisabled || deleting}
+                inline
+              />
+            ) : null}
+            {!question.isLocked ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))] text-xs font-medium text-destructive hover:bg-destructive/5 hover:text-destructive"
+                disabled={deleting}
+                onClick={onDelete}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>

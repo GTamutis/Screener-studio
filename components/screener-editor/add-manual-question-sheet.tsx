@@ -25,11 +25,13 @@ import { cn } from "@/lib/utils";
 
 export function AddManualQuestionSheet({
   screenerId,
+  parentId = null,
   open,
   onOpenChange,
   onQuestionAdded,
 }: {
   screenerId: string;
+  parentId?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onQuestionAdded: (question: ScreenerQuestion) => void;
@@ -42,7 +44,7 @@ export function AddManualQuestionSheet({
 
   useEffect(() => {
     if (open) setValues(emptyQuestionEditorValues());
-  }, [open]);
+  }, [open, parentId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +53,7 @@ export function AddManualQuestionSheet({
     startTransition(async () => {
       const res = await addManualScreenerQuestion({
         screenerId,
+        parentId: parentId ?? undefined,
         questionText: values.questionText,
         questionType: values.questionType,
         answerOptions: showOptions ? values.answerOptions : undefined,
@@ -61,7 +64,7 @@ export function AddManualQuestionSheet({
         return;
       }
 
-      toast.success("Question added.");
+      toast.success(parentId ? "Sub-question added." : "Question added.");
       onQuestionAdded(res.question);
       onOpenChange(false);
     });
@@ -77,10 +80,13 @@ export function AddManualQuestionSheet({
         )}
       >
         <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5 text-left">
-          <DialogTitle>Add manual question</DialogTitle>
+          <DialogTitle>
+            {parentId ? "Add sub-question" : "Add manual question"}
+          </DialogTitle>
           <DialogDescription>
-            Write your question, choose a type, and add answer options where
-            needed.
+            {parentId
+              ? "Write a sub-question that appears below its parent in the screener."
+              : "Write your question, choose a type, and add answer options where needed."}
           </DialogDescription>
         </DialogHeader>
 

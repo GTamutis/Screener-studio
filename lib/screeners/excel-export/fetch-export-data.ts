@@ -7,14 +7,14 @@ import {
 } from "@/lib/screeners/question-types";
 import type { DbScreenerQuestionRow } from "@/lib/screeners/question-types";
 import { orderedExportQuestions } from "@/lib/screeners/question-tree";
-import type { QuestionLibraryCategory } from "@/lib/question-library/types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatScreenerNameWithVersion } from "@/lib/screeners/version";
 
-import type { ExportQuestion, WordExportPayload } from "./types";
+import type { ExcelExportPayload, ExcelExportQuestion } from "./types";
 
-export async function fetchWordExportPayload(
+export async function fetchExcelExportPayload(
   screenerId: string,
-): Promise<WordExportPayload> {
+): Promise<ExcelExportPayload> {
   const screener = await getScreenerById(screenerId);
   const supabase = createAdminClient();
 
@@ -33,46 +33,32 @@ export async function fetchWordExportPayload(
     mapScreenerQuestion(row as DbScreenerQuestionRow),
   );
 
-  const libraryIds = Array.from(
-    new Set(
-      questions
-        .map((q) => q.libraryQuestionId)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  );
-
-  const categoryByLibraryId = new Map<string, QuestionLibraryCategory>();
-
-  if (libraryIds.length > 0) {
-    const { data: libraryRows, error: libraryError } = await supabase
-      .from("question_library")
-      .select("id, category")
-      .in("id", libraryIds);
-
-    if (libraryError) {
-      throw new Error(libraryError.message);
-    }
-
-    for (const row of libraryRows ?? []) {
-      if (row.id && row.category) {
-        categoryByLibraryId.set(
-          row.id as string,
-          row.category as QuestionLibraryCategory,
-        );
-      }
-    }
-  }
-
-  const exportQuestions: ExportQuestion[] = orderedExportQuestions(
+  const exportQuestions: ExcelExportQuestion[] = orderedExportQuestions(
     questions,
   ).map(({ question, label, isSubQuestion }) => ({
     ...question,
     displayLabel: label,
     isSubQuestion,
-    category: question.libraryQuestionId
-      ? (categoryByLibraryId.get(question.libraryQuestionId) ?? null)
-      : null,
   }));
 
   return { screener, questions: exportQuestions };
+}
+
+export function excelExportFilename(screenerName: string): string {
+  const safeName = screenerName
+    .replace(/[^\w\s-]+/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+  return `${safeName || "screener"}-responses.xlsx`;
+}
+
+export function screenerTitleLine(
+  payload: ExcelExportPayload,
+): string {
+  return formatScreenerNameWithVersion(payload.screener.name, {
+    majorVersion: payload.screener.majorVersion,
+    minorVersion: payload.screener.minorVersion,
+    status: payload.screener.status,
+  });
 }

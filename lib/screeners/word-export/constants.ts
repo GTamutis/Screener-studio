@@ -40,6 +40,8 @@ export const PAGE = {
   marginBottom: 851,
   marginLeft: 1134,
   marginRight: 1134,
+  /** Footer distance from bottom of page (0.7″). */
+  footer: 1008,
   contentWidth: 9639,
 } as const;
 

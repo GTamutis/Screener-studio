@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Download,
+  FileSpreadsheet,
   FileText,
   Loader2,
   Save,
@@ -19,6 +20,12 @@ import {
 } from "@/app/actions/screeners";
 import { ScreenerEditorStatusMenu } from "@/components/screener-editor/screener-editor-status-menu";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export function ScreenerEditorToolbar({
@@ -35,7 +42,8 @@ export function ScreenerEditorToolbar({
   onStopQualityReview?: () => void;
 }) {
   const [saving, startSave] = useTransition();
-  const [exporting, setExporting] = useState(false);
+  const [exportingWord, setExportingWord] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const handleSave = () => {
     startSave(async () => {
@@ -49,44 +57,69 @@ export function ScreenerEditorToolbar({
     });
   };
 
-  const handleExport = async () => {
-    setExporting(true);
+  const downloadExport = async (
+    endpoint: "/api/export/word" | "/api/export/excel",
+    fallbackFilename: string,
+    successMessage: string,
+  ) => {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ screenerId: screener.id }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      toast.error(payload?.error ?? "Export failed. Please try again.");
+      return;
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("Content-Disposition");
+    const filenameMatch = disposition?.match(/filename="([^"]+)"/i);
+    const filename = filenameMatch?.[1] ?? fallbackFilename;
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+
+    toast.success(successMessage);
+  };
+
+  const handleExportWord = async () => {
+    setExportingWord(true);
     try {
-      const response = await fetch("/api/export/word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ screenerId: screener.id }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        toast.error(payload?.error ?? "Export failed. Please try again.");
-        return;
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="([^"]+)"/i);
-      const filename =
-        filenameMatch?.[1] ??
-        `${screener.name.replace(/[^\w\s-]+/g, "").trim() || "screener"}-export.docx`;
-
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-
-      toast.success("Word document downloaded.");
+      await downloadExport(
+        "/api/export/word",
+        `${screener.name.replace(/[^\w\s-]+/g, "").trim() || "screener"}-export.docx`,
+        "Word document downloaded.",
+      );
     } catch {
       toast.error("Export failed. Please try again.");
     } finally {
-      setExporting(false);
+      setExportingWord(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      await downloadExport(
+        "/api/export/excel",
+        `${screener.name.replace(/[^\w\s-]+/g, "").trim() || "screener"}-responses.xlsx`,
+        "Excel spreadsheet downloaded.",
+      );
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -155,21 +188,34 @@ export function ScreenerEditorToolbar({
           minorVersion={screener.minorVersion}
           onStatusChange={onScreenerVersionChange}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
-          disabled={exporting}
-          onClick={handleExport}
-        >
-          {exporting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          Export
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
+              disabled={exportingWord || exportingExcel}
+            >
+              {exportingWord || exportingExcel ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={exportingWord} onClick={handleExportWord}>
+              <FileText className="h-4 w-4" />
+              Export Word
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={exportingExcel} onClick={handleExportExcel}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Export Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

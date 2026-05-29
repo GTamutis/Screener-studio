@@ -4,10 +4,14 @@ import { BookOpen, Bot, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { deleteScreenerQuestion } from "@/app/actions/screener-questions";
+import {
+  deleteScreenerQuestion,
+  deleteScreenerQuestionWithChildren,
+} from "@/app/actions/screener-questions";
 import { AddManualQuestionSheet } from "@/components/screener-editor/add-manual-question-sheet";
 import { ScreenerQuestionSortableList } from "@/components/screener-editor/screener-question-sortable-list";
 import { Button } from "@/components/ui/button";
+import { countSubQuestions } from "@/lib/screeners/question-tree";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 
@@ -35,6 +39,9 @@ export function ScreenerEditorCanvas({
   const [pending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [manualSheetOpen, setManualSheetOpen] = useState(false);
+  const [subQuestionParentId, setSubQuestionParentId] = useState<string | null>(
+    null,
+  );
 
   const handleAddLibrary = () => toast.message("Use the Library tab on the right");
 
@@ -46,22 +53,48 @@ export function ScreenerEditorCanvas({
     toast.message("Open the AI Chat tab on the right");
   };
 
+  const handleOpenManualSheet = (parentId?: string | null) => {
+    setSubQuestionParentId(parentId ?? null);
+    setManualSheetOpen(true);
+  };
+
+  const handleManualSheetOpenChange = (open: boolean) => {
+    setManualSheetOpen(open);
+    if (!open) setSubQuestionParentId(null);
+  };
+
   const handleDelete = (question: ScreenerQuestion) => {
     if (question.isLocked) return;
 
     const label = question.questionText.slice(0, 80);
-    const message = label
-      ? `Delete this question?\n\n"${label}${question.questionText.length > 80 ? "…" : ""}"`
-      : "Delete this question?";
+    const isTopLevel = question.parentId === null;
+    const subCount = isTopLevel
+      ? countSubQuestions(questions, question.id)
+      : 0;
+
+    let message: string;
+    if (subCount > 0) {
+      message = `This question has ${subCount} sub-question${subCount === 1 ? "" : "s"}. Deleting it will also delete all sub-questions. Are you sure?`;
+    } else {
+      message = label
+        ? `Delete this question?\n\n"${label}${question.questionText.length > 80 ? "…" : ""}"`
+        : "Delete this question?";
+    }
 
     if (!confirm(message)) return;
 
     setDeletingId(question.id);
     startTransition(async () => {
-      const res = await deleteScreenerQuestion({
-        screenerId: screener.id,
-        questionId: question.id,
-      });
+      const res =
+        subCount > 0
+          ? await deleteScreenerQuestionWithChildren({
+              screenerId: screener.id,
+              questionId: question.id,
+            })
+          : await deleteScreenerQuestion({
+              screenerId: screener.id,
+              questionId: question.id,
+            });
       setDeletingId(null);
       if (!res.ok) {
         toast.error(res.error);
@@ -94,7 +127,7 @@ export function ScreenerEditorCanvas({
           className="mx-auto max-w-3xl space-y-4"
           onClick={(e) => e.stopPropagation()}
         >
-          {questions.length === 0 ? (
+          {questions.filter((q) => q.parentId === null).length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-[hsl(var(--workspace-panel))] px-8 py-16 text-center shadow-sm">
               <p className="text-sm font-medium text-foreground">
                 No questions yet
@@ -112,6 +145,7 @@ export function ScreenerEditorCanvas({
               highlightedQuestionId={highlightedQuestionId}
               onSelectQuestion={onSelectQuestion}
               onDeleteQuestion={handleDelete}
+              onAddSubQuestion={(parentId) => handleOpenManualSheet(parentId)}
               onQuestionsReplaced={onQuestionsReplaced}
               deletingId={deletingId}
               reorderDisabled={pending}
@@ -123,7 +157,7 @@ export function ScreenerEditorCanvas({
               type="button"
               variant="outline"
               className="gap-2 border-border/80 bg-[hsl(var(--workspace-panel))] shadow-sm"
-              onClick={() => setManualSheetOpen(true)}
+              onClick={() => handleOpenManualSheet(null)}
             >
               <Plus className="h-4 w-4" />
               Add manual question
@@ -152,8 +186,9 @@ export function ScreenerEditorCanvas({
 
       <AddManualQuestionSheet
         screenerId={screener.id}
+        parentId={subQuestionParentId}
         open={manualSheetOpen}
-        onOpenChange={setManualSheetOpen}
+        onOpenChange={handleManualSheetOpenChange}
         onQuestionAdded={onQuestionAdded}
       />
     </section>

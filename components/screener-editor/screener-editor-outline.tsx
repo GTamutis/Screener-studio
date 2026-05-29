@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ListTree } from "lucide-react";
 
 import { ScreenerQuotasOutline } from "@/components/screener-editor/screener-quotas-outline";
 import { Button } from "@/components/ui/button";
 import {
-  questionLabel,
-  type ScreenerQuestion,
-} from "@/lib/screeners/question-types";
+  buildQuestionTree,
+  flattenQuestionTree,
+} from "@/lib/screeners/question-tree";
+import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
 const OUTLINE_COLLAPSED_KEY = "screener-editor-outline-collapsed";
@@ -27,6 +28,16 @@ export function ScreenerEditorOutline({
   onCollapsedChange?: (collapsed: boolean) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+
+  const flatItems = useMemo(
+    () => flattenQuestionTree(buildQuestionTree(questions)),
+    [questions],
+  );
+
+  const topLevelCount = useMemo(
+    () => questions.filter((q) => q.parentId === null).length,
+    [questions],
+  );
 
   useEffect(() => {
     try {
@@ -111,8 +122,8 @@ export function ScreenerEditorOutline({
               <span className="sr-only">Hide outline</span>
             </Button>
             <p className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Outline · {questions.length} question
-              {questions.length === 1 ? "" : "s"}
+              Outline · {topLevelCount} question
+              {topLevelCount === 1 ? "" : "s"}
             </p>
           </div>
 
@@ -121,31 +132,32 @@ export function ScreenerEditorOutline({
               <p className="px-2 py-1.5 text-xs font-semibold text-foreground">
                 Questions
               </p>
-              {questions.length === 0 ? (
+              {flatItems.length === 0 ? (
                 <p className="px-2 py-2 text-xs text-muted-foreground">
                   No questions yet
                 </p>
               ) : (
                 <ul className="space-y-0.5">
-                  {questions.map((q) => (
-                    <li key={q.id}>
+                  {flatItems.map((item) => (
+                    <li key={item.question.id}>
                       <button
                         type="button"
-                        onClick={() => onSelectQuestion(q.id)}
+                        onClick={() => onSelectQuestion(item.question.id)}
                         className={cn(
                           "flex w-full items-start gap-2 rounded-lg px-2 py-2 text-left text-xs transition",
-                          selectedQuestionId === q.id
+                          item.isSubQuestion && "ml-3",
+                          selectedQuestionId === item.question.id
                             ? "bg-blue-50 text-blue-900 dark:bg-blue-500/15 dark:text-blue-100"
                             : "text-foreground hover:bg-[hsl(var(--workspace-surface))]",
                         )}
                       >
                         <span className="shrink-0 font-mono font-semibold text-muted-foreground">
-                          {questionLabel(q.position)}
+                          {item.label}
                         </span>
                         <span className="line-clamp-2 min-w-0 flex-1 font-medium">
-                          {q.questionText}
+                          {item.question.questionText}
                         </span>
-                        {q.quotaConfig?.enabled ? (
+                        {item.question.quotaConfig?.enabled ? (
                           <span
                             className="shrink-0 rounded bg-violet-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-800 dark:bg-violet-500/20 dark:text-violet-200"
                             title="Quotas enabled"
