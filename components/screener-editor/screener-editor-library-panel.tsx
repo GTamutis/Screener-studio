@@ -1,141 +1,126 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2, Lock, Plus, Search } from "lucide-react";
+import { Loader2, Lock, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { addScreenerQuestionFromLibrary } from "@/app/actions/screener-questions";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  CATEGORY_LABELS,
   LIBRARY_CATEGORY_FILTERS,
-  QUESTION_TYPE_LABELS,
+  LIBRARY_LIST_TYPE_LABELS,
   type LibraryCategoryFilter,
 } from "@/lib/question-library/constants";
 import { filterLibraryQuestions } from "@/lib/question-library/filter";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
-import { buildQuestionTree } from "@/lib/screeners/question-tree";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
-function truncateText(text: string, max = 120): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= max) return normalized;
-  return `${normalized.slice(0, max).trim()}…`;
+function formatQuestionCount(count: number): string {
+  return `${count} question${count === 1 ? "" : "s"}`;
 }
 
-function LibraryQuestionRow({
+function LibraryQuestionCard({
   question,
+  expanded,
   alreadyAdded,
   adding,
-  topLevelParents,
+  onToggleExpand,
   onAdd,
-  onAddAsSub,
 }: {
   question: QuestionLibraryItem;
+  expanded: boolean;
   alreadyAdded: boolean;
   adding: boolean;
-  topLevelParents: { id: string; label: string }[];
+  onToggleExpand: () => void;
   onAdd: () => void;
-  onAddAsSub: (parentId: string) => void;
 }) {
+  const displayId = question.displayId?.trim() || "—";
   const typeLabel =
-    QUESTION_TYPE_LABELS[question.questionType] ?? question.questionType;
-  const categoryLabel = CATEGORY_LABELS[question.category] ?? question.category;
+    LIBRARY_LIST_TYPE_LABELS[question.questionType] ?? question.questionType;
+  const options = question.answerOptions.filter((o) => o.text.trim());
 
   return (
-    <li className="rounded-lg border border-border/80 bg-[hsl(var(--workspace-surface))] p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="rounded bg-[hsl(var(--workspace-panel))] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border/80">
-              {typeLabel}
-            </span>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 ring-1 ring-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-400/30">
-              {categoryLabel}
-            </span>
-            {question.isLocked ? (
-              <Lock
-                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                aria-label="Locked"
-              />
-            ) : null}
-          </div>
-          <p className="text-xs leading-relaxed text-foreground">
-            {truncateText(question.questionText)}
-          </p>
-        </div>
-      </div>
+    <li className="rounded-lg border border-border/80 bg-[hsl(var(--workspace-panel))]">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggleExpand}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpand();
+          }
+        }}
+        className="flex w-full cursor-pointer gap-2 p-2.5 text-left"
+      >
+        <span className="shrink-0 self-start rounded-md bg-[hsl(var(--workspace-surface))] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground ring-1 ring-border/80">
+          {displayId}
+        </span>
 
-      <div className="mt-3 flex">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 flex-1 gap-1.5 rounded-r-none text-xs"
-          disabled={alreadyAdded || adding}
-          onClick={onAdd}
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-xs leading-snug text-foreground",
+              !expanded && "line-clamp-2",
+            )}
+          >
+            {question.questionText}
+          </p>
+          <p className="mt-1 text-[10px] text-muted-foreground">{typeLabel}</p>
+        </div>
+
+        <div
+          className="flex shrink-0 flex-col items-end gap-1.5 self-start"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
-          {adding ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {question.isLocked ? (
+            <Lock
+              className="h-3.5 w-3.5 text-muted-foreground"
+              aria-label="Locked"
+            />
+          ) : null}
+
+          {alreadyAdded ? (
+            <span className="text-[10px] font-medium text-muted-foreground">
+              Added
+            </span>
           ) : (
-            <Plus className="h-3.5 w-3.5" />
-          )}
-          {alreadyAdded ? "Added" : "Add to screener"}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
             <Button
               type="button"
               size="sm"
-              className="h-8 rounded-l-none border-l border-primary-foreground/20 px-2"
-              disabled={alreadyAdded || adding}
-              aria-label="More add options"
+              variant="outline"
+              className="h-7 px-2 text-[10px] font-semibold"
+              disabled={adding}
+              onClick={onAdd}
             >
-              <ChevronDown className="h-3.5 w-3.5" />
+              {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : "+ Add"}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem disabled={alreadyAdded || adding} onClick={onAdd}>
-              Add to screener
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {topLevelParents.length === 0 ? (
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Add a top-level question first
-              </DropdownMenuLabel>
-            ) : (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger disabled={alreadyAdded || adding}>
-                  Add as sub-question of…
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-48">
-                  {topLevelParents.map((parent) => (
-                    <DropdownMenuItem
-                      key={parent.id}
-                      disabled={alreadyAdded || adding}
-                      onClick={() => onAddAsSub(parent.id)}
-                    >
-                      {parent.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+        </div>
       </div>
+
+      {expanded ? (
+        <div className="border-t border-border/60 px-2.5 pb-2.5 pt-2">
+          <p className="text-xs leading-relaxed text-foreground">
+            {question.questionText}
+          </p>
+          {options.length > 0 ? (
+            <ul className="mt-2 space-y-1 border-l-2 border-border/80 pl-2.5">
+              {options.map((option, index) => (
+                <li
+                  key={`${question.id}-opt-${index}`}
+                  className="text-[11px] leading-snug text-muted-foreground"
+                >
+                  {option.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -154,6 +139,7 @@ export function ScreenerEditorLibraryPanel({
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] =
     useState<LibraryCategoryFilter>("all");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -167,43 +153,40 @@ export function ScreenerEditorLibraryPanel({
     [screenerQuestions],
   );
 
-  const topLevelParents = useMemo(
-    () =>
-      buildQuestionTree(screenerQuestions).map((node) => ({
-        id: node.question.id,
-        label: node.label,
-      })),
-    [screenerQuestions],
-  );
-
   const filtered = useMemo(
     () => filterLibraryQuestions(libraryQuestions, query, categoryFilter),
     [libraryQuestions, query, categoryFilter],
   );
 
-  const handleAdd = (libraryQuestionId: string, parentId?: string | null) => {
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAdd = (libraryQuestionId: string) => {
     setAddingId(libraryQuestionId);
     startTransition(async () => {
       const res = await addScreenerQuestionFromLibrary({
         screenerId,
         libraryQuestionId,
-        parentId: parentId ?? undefined,
       });
       setAddingId(null);
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success(
-        parentId ? "Sub-question added to screener." : "Question added to screener.",
-      );
+      toast.success("Question added to screener.");
       onQuestionAdded(res.question);
     });
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 border-b border-border/80 p-3">
+      <div className="shrink-0 space-y-2.5 border-b border-border/80 bg-[hsl(var(--workspace-panel))] p-3">
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -213,52 +196,53 @@ export function ScreenerEditorLibraryPanel({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search library…"
-            className="h-9 pl-8 text-xs"
-            aria-label="Search question library"
+            placeholder="Search questions..."
+            className="h-9 w-full pl-8 text-xs"
+            aria-label="Search questions"
           />
         </div>
 
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
-          {LIBRARY_CATEGORY_FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              onClick={() => setCategoryFilter(filter.id)}
-              className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
-                categoryFilter === filter.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-[hsl(var(--workspace-surface))] text-muted-foreground hover:bg-[hsl(var(--workspace-surface))]/80 hover:text-foreground",
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
+        <div className="-mx-0.5 flex flex-wrap gap-1">
+          {LIBRARY_CATEGORY_FILTERS.map((filter) => {
+            const active = categoryFilter === filter.id;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setCategoryFilter(filter.id)}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors",
+                  active
+                    ? "bg-[hsl(var(--dos-navy))] text-white"
+                    : "bg-[hsl(var(--workspace-surface))] text-muted-foreground ring-1 ring-border/80 hover:text-foreground",
+                )}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
         </div>
 
-        <p className="text-[10px] text-muted-foreground">
-          {filtered.length} of {libraryQuestions.length} questions
+        <p className="text-[11px] text-muted-foreground">
+          {formatQuestionCount(filtered.length)}
         </p>
       </div>
 
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {filtered.length === 0 ? (
-          <li className="px-2 py-8 text-center text-xs text-muted-foreground">
-            {query.trim()
-              ? "No questions match your search."
-              : "No questions in this category."}
+          <li className="px-2 py-10 text-center text-xs text-muted-foreground">
+            No questions found. Try a different search or filter.
           </li>
         ) : (
           filtered.map((question) => (
-            <LibraryQuestionRow
+            <LibraryQuestionCard
               key={question.id}
               question={question}
+              expanded={expandedIds.has(question.id)}
               alreadyAdded={addedLibraryIds.has(question.id)}
               adding={pending && addingId === question.id}
-              topLevelParents={topLevelParents}
+              onToggleExpand={() => toggleExpanded(question.id)}
               onAdd={() => handleAdd(question.id)}
-              onAddAsSub={(parentId) => handleAdd(question.id, parentId)}
             />
           ))
         )}

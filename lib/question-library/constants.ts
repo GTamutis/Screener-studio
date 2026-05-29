@@ -2,9 +2,10 @@ import type { QuestionLibraryCategory } from "@/lib/question-library/types";
 
 export type LibraryCategoryFilter =
   | "all"
+  | "introduction"
   | "consent"
   | "demographics"
-  | "specialty"
+  | "screening"
   | "exclusion"
   | "scheduling"
   | "other";
@@ -16,29 +17,37 @@ export const LIBRARY_CATEGORY_FILTERS: {
 }[] = [
   { id: "all", label: "All", categories: null },
   {
-    id: "consent",
-    label: "Consent",
-    categories: ["consent", "disclaimer"],
+    id: "introduction",
+    label: "Intro",
+    categories: ["introduction", "disclaimer"],
   },
+  { id: "consent", label: "Consent", categories: ["consent"] },
   { id: "demographics", label: "Demographics", categories: ["demographics"] },
   {
-    id: "specialty",
-    label: "Specialty",
-    categories: ["hcp_qualification", "screening"],
+    id: "screening",
+    label: "Screening",
+    categories: ["screening", "hcp_qualification"],
   },
   { id: "exclusion", label: "Exclusion", categories: ["exclusion"] },
   { id: "scheduling", label: "Scheduling", categories: ["scheduling"] },
-  {
-    id: "other",
-    label: "Other",
-    categories: ["other", "introduction"],
-  },
+  { id: "other", label: "Other", categories: ["other"] },
 ];
 
 export const QUESTION_TYPE_LABELS: Record<string, string> = {
   single: "Single choice",
   multi: "Multiple choice",
   open: "Open text",
+  numeric: "Numeric",
+  scale: "Scale",
+  statement: "Statement",
+  grid: "Grid",
+};
+
+/** Short labels for the screener editor library list. */
+export const LIBRARY_LIST_TYPE_LABELS: Record<string, string> = {
+  single: "Single",
+  multi: "Multi",
+  open: "Open",
   numeric: "Numeric",
   scale: "Scale",
   statement: "Statement",

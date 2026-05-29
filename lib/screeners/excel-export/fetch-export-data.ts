@@ -8,9 +8,19 @@ import {
 import type { DbScreenerQuestionRow } from "@/lib/screeners/question-types";
 import { orderedExportQuestions } from "@/lib/screeners/question-tree";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatScreenerNameWithVersion } from "@/lib/screeners/version";
+import { formatScreenerVersionLabel } from "@/lib/screeners/version";
 
 import type { ExcelExportPayload, ExcelExportQuestion } from "./types";
+
+function sanitizeFilenamePart(value: string, maxLength = 80): string {
+  return value
+    .trim()
+    .replace(/[^\w\s-]+/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, maxLength);
+}
 
 export async function fetchExcelExportPayload(
   screenerId: string,
@@ -39,26 +49,37 @@ export async function fetchExcelExportPayload(
     ...question,
     displayLabel: label,
     isSubQuestion,
+    columnHeader: label,
   }));
 
   return { screener, questions: exportQuestions };
 }
 
-export function excelExportFilename(screenerName: string): string {
-  const safeName = screenerName
-    .replace(/[^\w\s-]+/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .slice(0, 80);
-  return `${safeName || "screener"}-responses.xlsx`;
+/** `{projectNumber}_{projectName}-Recruitment Log_{version}.xlsx` */
+export function excelExportFilename(
+  screener: ExcelExportPayload["screener"],
+): string {
+  const projectNumber =
+    sanitizeFilenamePart(screener.projectNumber.trim() || "Project", 40);
+  const projectName = sanitizeFilenamePart(
+    screener.projectName.trim() || screener.name.trim() || "Screener",
+    60,
+  );
+  const version = formatScreenerVersionLabel({
+    majorVersion: screener.majorVersion,
+    minorVersion: screener.minorVersion,
+    status: screener.status,
+  });
+  return `${projectNumber}_${projectName}-Recruitment Log_${version}.xlsx`;
 }
 
-export function screenerTitleLine(
-  payload: ExcelExportPayload,
-): string {
-  return formatScreenerNameWithVersion(payload.screener.name, {
-    majorVersion: payload.screener.majorVersion,
-    minorVersion: payload.screener.minorVersion,
-    status: payload.screener.status,
-  });
+export function formatUkDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+export function normalizeQuestionTextForCell(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
 }

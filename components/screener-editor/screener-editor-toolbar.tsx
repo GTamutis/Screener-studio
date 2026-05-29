@@ -8,6 +8,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  ListChecks,
   Loader2,
   Save,
   Square,
@@ -34,12 +35,14 @@ export function ScreenerEditorToolbar({
   qualityReviewLoading,
   onRunQualityReview,
   onStopQualityReview,
+  onOpenConsentBuilder,
 }: {
   screener: ScreenerWithProject;
   onScreenerVersionChange: (snapshot: ScreenerVersionSnapshot) => void;
   qualityReviewLoading?: boolean;
   onRunQualityReview?: () => void;
   onStopQualityReview?: () => void;
+  onOpenConsentBuilder?: () => void;
 }) {
   const [saving, startSave] = useTransition();
   const [exportingWord, setExportingWord] = useState(false);
@@ -113,8 +116,8 @@ export function ScreenerEditorToolbar({
     try {
       await downloadExport(
         "/api/export/excel",
-        `${screener.name.replace(/[^\w\s-]+/g, "").trim() || "screener"}-responses.xlsx`,
-        "Excel spreadsheet downloaded.",
+        "RecruitmentLog.xlsx",
+        "Recruitment log downloaded.",
       );
     } catch {
       toast.error("Export failed. Please try again.");
@@ -143,6 +146,19 @@ export function ScreenerEditorToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {onOpenConsentBuilder ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 border-[hsl(var(--dos-navy))] bg-[hsl(var(--workspace-panel))] text-[hsl(var(--dos-navy))] hover:bg-[hsl(var(--dos-navy))]/5"
+            onClick={onOpenConsentBuilder}
+          >
+            <ListChecks className="h-4 w-4" />
+            <span className="hidden md:inline">Quick Add: Consents &amp; Intro</span>
+            <span className="md:hidden">Consents &amp; Intro</span>
+          </Button>
+        ) : null}
         {qualityReviewLoading && onStopQualityReview ? (
           <Button
             type="button"
@@ -208,11 +224,11 @@ export function ScreenerEditorToolbar({
           <DropdownMenuContent align="end">
             <DropdownMenuItem disabled={exportingWord} onClick={handleExportWord}>
               <FileText className="h-4 w-4" />
-              Export Word
+              Export Screener
             </DropdownMenuItem>
             <DropdownMenuItem disabled={exportingExcel} onClick={handleExportExcel}>
               <FileSpreadsheet className="h-4 w-4" />
-              Export Excel
+              Export Recruitment Log
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

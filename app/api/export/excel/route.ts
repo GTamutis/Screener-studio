@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { getActiveAppUserForAction } from "@/lib/auth/get-app-user";
 import { buildScreenerExcelWorkbook } from "@/lib/screeners/excel-export/build-workbook";
 
+// IMPORTANT: The column structure of this export (13 fixed core columns +
+// display_id-labelled screener response columns) must remain stable.
+// A future re-upload feature will parse files generated here and relies
+// on this exact structure to identify and import respondent data.
+
 export const runtime = "nodejs";
 
 const UUID_RE =

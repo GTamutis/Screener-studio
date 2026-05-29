@@ -14,6 +14,8 @@ import {
   quotaConfigForSave,
   type ScreenerQuestionQuotaConfig,
 } from "@/lib/screeners/question-quotas";
+import { isConsentBuilderCategoryAndTags } from "@/lib/question-library/consent-builder";
+import type { QuestionLibraryCategory } from "@/lib/question-library/types";
 import type { QuestionAnswerOption } from "@/lib/question-library/types";
 import {
   mapScreenerQuestion,
@@ -373,6 +375,209 @@ export async function addScreenerQuestionFromLibrary(input: {
       ok: false,
       error:
         e instanceof Error ? e.message : "Could not add question from library.",
+    };
+  }
+}
+
+async function insertLibraryQuestionAtPosition(
+  screenerId: string,
+  libraryQuestionId: string,
+  position: number,
+): Promise<ScreenerQuestion> {
+  const supabase = createAdminClient();
+
+  const { data: libraryQuestion, error: libraryError } = await supabase
+    .from("question_library")
+    .select(
+      "id, question_text, question_type, answer_options, notes, is_locked, status",
+    )
+    .eq("id", libraryQuestionId)
+    .eq("status", "approved")
+    .maybeSingle();
+
+  if (libraryError) throw new Error(libraryError.message);
+  if (!libraryQuestion) {
+    throw new Error("Library question not found or not approved.");
+  }
+
+  const answerOptions = cloneAnswerOptions(
+    libraryQuestion.answer_options as QuestionAnswerOption[] | null,
+  );
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("screener_questions")
+    .insert({
+      screener_id: screenerId,
+      position,
+      parent_id: null,
+      sub_position: null,
+      question_text: libraryQuestion.question_text,
+      question_type: libraryQuestion.question_type,
+      answer_options: answerOptions.length > 0 ? answerOptions : null,
+      notes: libraryQuestion.notes ?? null,
+      source: "library",
+      is_locked: libraryQuestion.is_locked,
+      library_question_id: libraryQuestion.id,
+      is_customized: false,
+    })
+    .select(SCREENER_QUESTION_SELECT)
+    .single();
+
+  if (insertError) {
+    const hint = schemaHint(insertError.message);
+    throw new Error(hint ?? insertError.message);
+  }
+
+  return mapScreenerQuestion(inserted as DbScreenerQuestionRow);
+}
+
+export async function applyConsentBuilderToScreener(input: {
+  screenerId: string;
+  selectedLibraryQuestionIds: string[];
+}): Promise<
+  | { ok: true; questions: ScreenerQuestion[]; addedCount: number }
+  | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    await getScreenerById(input.screenerId);
+
+    const selectedIds = input.selectedLibraryQuestionIds.map((id) => {
+      assertUuid(id, "library question id");
+      return id;
+    });
+    const selectedSet = new Set(selectedIds);
+    const uniqueSelected = Array.from(selectedSet);
+    if (uniqueSelected.length !== selectedIds.length) {
+      return { ok: false, error: "Duplicate library questions in selection." };
+    }
+
+    const supabase = createAdminClient();
+    const { data: libraryRows, error: libraryError } = await supabase
+      .from("question_library")
+      .select("id, category, tags")
+      .eq("status", "approved");
+
+    if (libraryError) return { ok: false, error: libraryError.message };
+
+    const consentPoolIds = new Set(
+      (libraryRows ?? [])
+        .filter((row) =>
+          isConsentBuilderCategoryAndTags(
+            row.category as QuestionLibraryCategory,
+            row.tags as string[] | null,
+          ),
+        )
+        .map((row) => row.id as string),
+    );
+
+    for (const id of uniqueSelected) {
+      if (!consentPoolIds.has(id)) {
+        return {
+          ok: false,
+          error: "One or more selected questions are not part of the consent builder.",
+        };
+      }
+    }
+
+    const currentQuestions = await fetchScreenerQuestionsOrdered(input.screenerId);
+    const byLibraryId = new Map<string, ScreenerQuestion>();
+    for (const question of currentQuestions) {
+      if (question.libraryQuestionId) {
+        byLibraryId.set(question.libraryQuestionId, question);
+      }
+    }
+
+    const toRemove = currentQuestions.filter(
+      (q) =>
+        q.libraryQuestionId &&
+        consentPoolIds.has(q.libraryQuestionId) &&
+        !selectedSet.has(q.libraryQuestionId) &&
+        q.parentId === null,
+    );
+
+    for (const question of toRemove) {
+      if (question.isLocked) {
+        return {
+          ok: false,
+          error: `Cannot remove locked question "${question.questionText.slice(0, 60)}…". Turn it on to keep it in the screener.`,
+        };
+      }
+    }
+
+    for (const question of toRemove) {
+      const subCount = currentQuestions.filter(
+        (q) => q.parentId === question.id,
+      ).length;
+      const res =
+        subCount > 0
+          ? await deleteScreenerQuestionWithChildren({
+              screenerId: input.screenerId,
+              questionId: question.id,
+            })
+          : await deleteScreenerQuestion({
+              screenerId: input.screenerId,
+              questionId: question.id,
+            });
+      if (!res.ok) return { ok: false, error: res.error };
+    }
+
+    const orderedToAdd = selectedIds.filter((id) => !byLibraryId.has(id));
+    let addedCount = 0;
+    const tempBase = 50_000;
+
+    for (let index = 0; index < orderedToAdd.length; index++) {
+      await insertLibraryQuestionAtPosition(
+        input.screenerId,
+        orderedToAdd[index],
+        tempBase + index,
+      );
+      addedCount += 1;
+    }
+
+    const refreshed = await fetchScreenerQuestionsOrdered(input.screenerId);
+    const refreshedByLibraryId = new Map<string, ScreenerQuestion>();
+    for (const question of refreshed) {
+      if (question.libraryQuestionId) {
+        refreshedByLibraryId.set(question.libraryQuestionId, question);
+      }
+    }
+
+    const consentBlockIds: string[] = [];
+    for (const libraryId of selectedIds) {
+      const question = refreshedByLibraryId.get(libraryId);
+      if (question?.parentId === null) {
+        consentBlockIds.push(question.id);
+      }
+    }
+
+    const consentBlockSet = new Set(consentBlockIds);
+    const topLevelOrdered = refreshed
+      .filter((q) => q.parentId === null)
+      .sort((a, b) => a.position - b.position)
+      .map((q) => q.id);
+
+    const restIds = topLevelOrdered.filter((id) => !consentBlockSet.has(id));
+    const finalOrder = [...consentBlockIds, ...restIds];
+
+    if (finalOrder.length > 0) {
+      const questions = await applyTopLevelQuestionOrder(
+        input.screenerId,
+        finalOrder,
+      );
+      revalidatePath(editorPath(input.screenerId));
+      return { ok: true, questions, addedCount };
+    }
+
+    revalidatePath(editorPath(input.screenerId));
+    return { ok: true, questions: refreshed, addedCount };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not apply consent builder selection.",
     };
   }
 }

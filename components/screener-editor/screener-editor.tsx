@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ScreenerEditorCanvas } from "@/components/screener-editor/screener-editor-canvas";
 import { ScreenerEditorOutline } from "@/components/screener-editor/screener-editor-outline";
 import { ScreenerEditorRightPanel } from "@/components/screener-editor/screener-editor-right-panel";
+import { ConsentBuilderModal } from "@/components/screener-editor/consent-builder-modal";
 import { ScreenerEditorToolbar } from "@/components/screener-editor/screener-editor-toolbar";
 import { QualityReviewPanel } from "@/components/screener-editor/quality-review-panel";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
@@ -61,6 +62,7 @@ export function ScreenerEditor({
     DismissedQualityReviewIssue[]
   >([]);
   const [outlineCollapsed, setOutlineCollapsed] = useState(false);
+  const [consentBuilderOpen, setConsentBuilderOpen] = useState(false);
   const [versionMeta, setVersionMeta] = useState<ScreenerVersionSnapshot>({
     status: screener.status,
     majorVersion: screener.majorVersion,
@@ -163,6 +165,20 @@ export function ScreenerEditor({
     });
   }, []);
 
+  const handleConsentBuilderApplied = useCallback(
+    (next: ScreenerQuestion[], _addedCount: number) => {
+      handleQuestionsReplaced(next);
+      setSelectedQuestionId(null);
+      setHighlightedQuestionId(null);
+      requestAnimationFrame(() => {
+        document
+          .getElementById("screener-canvas-scroll")
+          ?.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    },
+    [handleQuestionsReplaced],
+  );
+
   const stopQualityReview = useCallback(() => {
     qualityReviewStopRequestedRef.current = true;
     qualityReviewAbortRef.current?.abort();
@@ -263,6 +279,15 @@ export function ScreenerEditor({
         qualityReviewLoading={qualityReviewLoading}
         onRunQualityReview={handleQualityReviewToolbarClick}
         onStopQualityReview={stopQualityReview}
+        onOpenConsentBuilder={() => setConsentBuilderOpen(true)}
+      />
+      <ConsentBuilderModal
+        open={consentBuilderOpen}
+        onOpenChange={setConsentBuilderOpen}
+        screenerId={screener.id}
+        libraryQuestions={libraryQuestions}
+        screenerQuestions={questions}
+        onApplied={handleConsentBuilderApplied}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <ScreenerEditorOutline
