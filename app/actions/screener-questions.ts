@@ -503,22 +503,23 @@ export async function applyConsentBuilderToScreener(input: {
           error: `Cannot remove locked question "${question.questionText.slice(0, 60)}…". Turn it on to keep it in the screener.`,
         };
       }
-    }
-
-    for (const question of toRemove) {
       const subCount = currentQuestions.filter(
         (q) => q.parentId === question.id,
       ).length;
-      const res =
-        subCount > 0
-          ? await deleteScreenerQuestionWithChildren({
-              screenerId: input.screenerId,
-              questionId: question.id,
-            })
-          : await deleteScreenerQuestion({
-              screenerId: input.screenerId,
-              questionId: question.id,
-            });
+      if (subCount > 0) {
+        return {
+          ok: false,
+          error:
+            "This consent block has sub-questions. Move or delete the sub-questions before removing it from the consent builder.",
+        };
+      }
+    }
+
+    for (const question of toRemove) {
+      const res = await deleteScreenerQuestion({
+        screenerId: input.screenerId,
+        questionId: question.id,
+      });
       if (!res.ok) return { ok: false, error: res.error };
     }
 
@@ -1161,6 +1162,24 @@ export async function deleteScreenerQuestionWithChildren(input: {
     }
     if (question.parent_id) {
       return deleteScreenerQuestion(input);
+    }
+
+    const { count: lockedChildCount, error: lockedChildrenError } = await supabase
+      .from("screener_questions")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .eq("is_locked", true);
+
+    if (lockedChildrenError) {
+      return { ok: false, error: lockedChildrenError.message };
+    }
+    if ((lockedChildCount ?? 0) > 0) {
+      return {
+        ok: false,
+        error:
+          "This question has locked sub-questions. Move them to top level before deleting the parent question.",
+      };
     }
 
     const { error: deleteChildrenError } = await supabase
