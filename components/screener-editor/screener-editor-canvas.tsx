@@ -12,12 +12,14 @@ import { AddManualQuestionSheet } from "@/components/screener-editor/add-manual-
 import { ScreenerQuestionSortableList } from "@/components/screener-editor/screener-question-sortable-list";
 import { Button } from "@/components/ui/button";
 import { countSubQuestions } from "@/lib/screeners/question-tree";
+import { isRemovableConsentBlockScreenerQuestion } from "@/lib/question-library/consent-builder";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
 
 export function ScreenerEditorCanvas({
   screener,
   questions,
+  consentPoolLibraryIds,
   selectedQuestionId,
   highlightedQuestionId,
   onSelectQuestion,
@@ -28,6 +30,7 @@ export function ScreenerEditorCanvas({
 }: {
   screener: ScreenerWithProject;
   questions: ScreenerQuestion[];
+  consentPoolLibraryIds: Set<string>;
   selectedQuestionId: string | null;
   highlightedQuestionId?: string | null;
   onSelectQuestion: (id: string) => void;
@@ -64,7 +67,11 @@ export function ScreenerEditorCanvas({
   };
 
   const handleDelete = (question: ScreenerQuestion) => {
-    if (question.isLocked) return;
+    if (
+      !isRemovableConsentBlockScreenerQuestion(question, consentPoolLibraryIds)
+    ) {
+      return;
+    }
 
     const label = question.questionText.slice(0, 80);
     const isTopLevel = question.parentId === null;
@@ -142,6 +149,7 @@ export function ScreenerEditorCanvas({
             <ScreenerQuestionSortableList
               screenerId={screener.id}
               questions={questions}
+              consentPoolLibraryIds={consentPoolLibraryIds}
               selectedQuestionId={selectedQuestionId}
               highlightedQuestionId={highlightedQuestionId}
               onSelectQuestion={onSelectQuestion}

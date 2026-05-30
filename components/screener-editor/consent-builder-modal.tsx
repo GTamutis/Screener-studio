@@ -135,7 +135,7 @@ export function ConsentBuilderModal({
   screenerId: string;
   libraryQuestions: QuestionLibraryItem[];
   screenerQuestions: ScreenerQuestion[];
-  onApplied: (questions: ScreenerQuestion[], addedCount: number) => void;
+  onApplied: (questions: ScreenerQuestion[], addedCount: number, removedCount: number) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -173,6 +173,17 @@ export function ConsentBuilderModal({
 
   const selectedCount = selectedOrderedIds.length;
 
+  const hasChanges = useMemo(() => {
+    if (selectedIds.size !== addedLibraryIds.size) return true;
+    for (const id of Array.from(selectedIds)) {
+      if (!addedLibraryIds.has(id)) return true;
+    }
+    for (const id of Array.from(addedLibraryIds)) {
+      if (!selectedIds.has(id)) return true;
+    }
+    return false;
+  }, [selectedIds, addedLibraryIds]);
+
   useEffect(() => {
     if (!open) return;
     const initial = new Set<string>();
@@ -195,11 +206,19 @@ export function ConsentBuilderModal({
         toast.error(res.error);
         return;
       }
-      onApplied(res.questions, res.addedCount);
+      onApplied(res.questions, res.addedCount, res.removedCount);
       onOpenChange(false);
-      if (res.addedCount > 0) {
+      if (res.addedCount > 0 && res.removedCount > 0) {
+        toast.success(
+          `Added ${res.addedCount} and removed ${res.removedCount} intro/consent question${res.addedCount + res.removedCount === 1 ? "" : "s"}.`,
+        );
+      } else if (res.addedCount > 0) {
         toast.success(
           `${res.addedCount} question${res.addedCount === 1 ? "" : "s"} added to the beginning of your screener`,
+        );
+      } else if (res.removedCount > 0) {
+        toast.success(
+          `${res.removedCount} question${res.removedCount === 1 ? "" : "s"} removed from your screener`,
         );
       } else {
         toast.success("Screener intro and consent blocks updated.");
@@ -218,8 +237,9 @@ export function ConsentBuilderModal({
             Consent &amp; Introduction Builder
           </DialogTitle>
           <DialogDescription className="mt-1 text-left text-sm">
-            Select the blocks you want to add to your screener. They will be
-            inserted at the beginning of the question list.
+            Select the blocks you want in your screener. Deselect a block to
+            remove it. Selected blocks are inserted at the beginning of the
+            question list.
           </DialogDescription>
         </div>
 
@@ -244,8 +264,6 @@ export function ConsentBuilderModal({
                     {items.map((question) => {
                       const alreadyInScreener = addedLibraryIds.has(question.id);
                       const checked = selectedIds.has(question.id);
-                      const cannotTurnOff =
-                        alreadyInScreener && question.isLocked && checked;
 
                       return (
                         <ConsentBuilderRow
@@ -254,7 +272,7 @@ export function ConsentBuilderModal({
                           checked={checked}
                           alreadyInScreener={alreadyInScreener}
                           previewOpen={previewId === question.id}
-                          toggleDisabled={cannotTurnOff}
+                          toggleDisabled={false}
                           onToggle={(next) => {
                             setSelectedIds((prev) => {
                               const copy = new Set(prev);
@@ -293,16 +311,16 @@ export function ConsentBuilderModal({
             </Button>
             <Button
               type="button"
-              disabled={pending || selectedCount === 0}
+              disabled={pending || !hasChanges}
               onClick={handleConfirm}
             >
               {pending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding…
+                  Applying…
                 </>
               ) : (
-                `Add ${selectedCount} to Screener`
+                "Apply to Screener"
               )}
             </Button>
           </div>

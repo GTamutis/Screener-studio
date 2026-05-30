@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 function QuestionTreeBlock({
   screenerId,
   questions,
+  consentPoolLibraryIds,
   node,
   selectedQuestionId,
   highlightedQuestionId,
@@ -52,6 +53,7 @@ function QuestionTreeBlock({
 }: {
   screenerId: string;
   questions: ScreenerQuestion[];
+  consentPoolLibraryIds: Set<string>;
   node: QuestionTreeNode;
   selectedQuestionId: string | null;
   highlightedQuestionId?: string | null;
@@ -74,6 +76,7 @@ function QuestionTreeBlock({
       <SortableScreenerQuestionCard
         screenerId={screenerId}
         allQuestions={questions}
+        consentPoolLibraryIds={consentPoolLibraryIds}
         onQuestionsReplaced={onQuestionsReplaced}
         question={node.question}
         displayLabel={node.label}
@@ -107,6 +110,7 @@ function QuestionTreeBlock({
                 key={child.question.id}
                 screenerId={screenerId}
                 allQuestions={questions}
+                consentPoolLibraryIds={consentPoolLibraryIds}
                 onQuestionsReplaced={onQuestionsReplaced}
                 question={child.question}
                 displayLabel={child.label}
@@ -129,6 +133,7 @@ function QuestionTreeBlock({
 export function ScreenerQuestionSortableList({
   screenerId,
   questions,
+  consentPoolLibraryIds,
   selectedQuestionId,
   highlightedQuestionId,
   onSelectQuestion,
@@ -140,6 +145,7 @@ export function ScreenerQuestionSortableList({
 }: {
   screenerId: string;
   questions: ScreenerQuestion[];
+  consentPoolLibraryIds: Set<string>;
   selectedQuestionId: string | null;
   highlightedQuestionId?: string | null;
   onSelectQuestion: (id: string) => void;
@@ -277,6 +283,7 @@ export function ScreenerQuestionSortableList({
               key={node.question.id}
               screenerId={screenerId}
               questions={questions}
+              consentPoolLibraryIds={consentPoolLibraryIds}
               node={node}
               selectedQuestionId={selectedQuestionId}
               highlightedQuestionId={highlightedQuestionId}

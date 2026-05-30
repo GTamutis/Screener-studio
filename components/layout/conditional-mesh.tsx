@@ -6,7 +6,10 @@ import { MeshBackground } from "@/components/ui/glass/mesh-background";
 
 export function ConditionalMesh() {
   const pathname = usePathname();
-  if (pathname?.startsWith("/workspace")) {
+  if (
+    pathname?.startsWith("/workspace") ||
+    pathname?.includes("/stakeholder-review")
+  ) {
     return null;
   }
   return <MeshBackground />;

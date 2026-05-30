@@ -18,6 +18,7 @@ export function SortableScreenerQuestionCard({
   dragDisabled,
   screenerId,
   allQuestions,
+  consentPoolLibraryIds,
   onQuestionsReplaced,
 }: {
   question: ScreenerQuestion;
@@ -32,6 +33,7 @@ export function SortableScreenerQuestionCard({
   dragDisabled?: boolean;
   screenerId: string;
   allQuestions: ScreenerQuestion[];
+  consentPoolLibraryIds: Set<string>;
   onQuestionsReplaced: (questions: ScreenerQuestion[]) => void;
 }) {
   const {
@@ -84,6 +86,7 @@ export function SortableScreenerQuestionCard({
         screenerId={screenerId}
         allQuestions={allQuestions}
         onQuestionsReplaced={onQuestionsReplaced}
+        consentPoolLibraryIds={consentPoolLibraryIds}
         structureDisabled={deleting}
       />
     </div>

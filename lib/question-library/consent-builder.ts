@@ -86,3 +86,22 @@ export function flattenConsentBuilderQuestions(
   const grouped = groupConsentBuilderQuestions(questions);
   return CONSENT_BUILDER_GROUPS.flatMap(({ key }) => grouped[key]);
 }
+
+export function consentBuilderLibraryQuestionIds(
+  libraryQuestions: QuestionLibraryItem[],
+): Set<string> {
+  return new Set(
+    libraryQuestions.filter(isConsentBuilderLibraryQuestion).map((q) => q.id),
+  );
+}
+
+export function isRemovableConsentBlockScreenerQuestion(
+  question: { isLocked: boolean; libraryQuestionId: string | null },
+  consentPoolIds: Set<string>,
+): boolean {
+  if (!question.isLocked) return true;
+  return Boolean(
+    question.libraryQuestionId &&
+      consentPoolIds.has(question.libraryQuestionId),
+  );
+}

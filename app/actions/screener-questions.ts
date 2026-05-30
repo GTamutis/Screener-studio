@@ -124,6 +124,48 @@ async function fetchScreenerQuestionsOrdered(
   );
 }
 
+async function fetchConsentPoolLibraryIds(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<Set<string>> {
+  const { data: libraryRows, error } = await supabase
+    .from("question_library")
+    .select("id, category, tags")
+    .eq("status", "approved");
+
+  if (error) throw new Error(error.message);
+
+  return new Set(
+    (libraryRows ?? [])
+      .filter((row) =>
+        isConsentBuilderCategoryAndTags(
+          row.category as QuestionLibraryCategory,
+          row.tags as string[] | null,
+        ),
+      )
+      .map((row) => row.id as string),
+  );
+}
+
+async function screenerQuestionMayDeleteDespiteLock(
+  supabase: ReturnType<typeof createAdminClient>,
+  screenerId: string,
+  questionId: string,
+  consentPoolIds?: Set<string>,
+): Promise<boolean> {
+  const { data: row, error } = await supabase
+    .from("screener_questions")
+    .select("library_question_id, parent_id")
+    .eq("id", questionId)
+    .eq("screener_id", screenerId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!row?.library_question_id || row.parent_id) return false;
+
+  const pool = consentPoolIds ?? (await fetchConsentPoolLibraryIds(supabase));
+  return pool.has(row.library_question_id as string);
+}
+
 async function nextTopLevelQuestionPosition(
   screenerId: string,
 ): Promise<number> {
@@ -435,7 +477,7 @@ export async function applyConsentBuilderToScreener(input: {
   screenerId: string;
   selectedLibraryQuestionIds: string[];
 }): Promise<
-  | { ok: true; questions: ScreenerQuestion[]; addedCount: number }
+  | { ok: true; questions: ScreenerQuestion[]; addedCount: number; removedCount: number }
   | { ok: false; error: string }
 > {
   try {
@@ -496,15 +538,7 @@ export async function applyConsentBuilderToScreener(input: {
         q.parentId === null,
     );
 
-    for (const question of toRemove) {
-      if (question.isLocked) {
-        return {
-          ok: false,
-          error: `Cannot remove locked question "${question.questionText.slice(0, 60)}…". Turn it on to keep it in the screener.`,
-        };
-      }
-    }
-
+    let removedCount = 0;
     for (const question of toRemove) {
       const subCount = currentQuestions.filter(
         (q) => q.parentId === question.id,
@@ -520,6 +554,7 @@ export async function applyConsentBuilderToScreener(input: {
               questionId: question.id,
             });
       if (!res.ok) return { ok: false, error: res.error };
+      removedCount += 1;
     }
 
     const orderedToAdd = selectedIds.filter((id) => !byLibraryId.has(id));
@@ -566,11 +601,11 @@ export async function applyConsentBuilderToScreener(input: {
         finalOrder,
       );
       revalidatePath(editorPath(input.screenerId));
-      return { ok: true, questions, addedCount };
+      return { ok: true, questions, addedCount, removedCount };
     }
 
     revalidatePath(editorPath(input.screenerId));
-    return { ok: true, questions: refreshed, addedCount };
+    return { ok: true, questions: refreshed, addedCount, removedCount };
   } catch (e) {
     return {
       ok: false,
@@ -739,6 +774,78 @@ export async function updateScreenerQuestion(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Could not update question.",
+    };
+  }
+}
+
+/** Quick wording tweak from stakeholder review (text only). */
+export async function updateScreenerQuestionTextQuick(input: {
+  screenerId: string;
+  questionId: string;
+  questionText: string;
+}): Promise<
+  { ok: true; question: ScreenerQuestion } | { ok: false; error: string }
+> {
+  try {
+    assertUuid(input.screenerId, "screener id");
+    assertUuid(input.questionId, "question id");
+    const screener = await getScreenerById(input.screenerId);
+
+    const questionText = normalizeWhitespace(input.questionText);
+    if (!questionText) {
+      return { ok: false, error: "Question text is required." };
+    }
+    if (questionText.length > QUESTION_TEXT_MAX) {
+      return {
+        ok: false,
+        error: `Question text must be ${QUESTION_TEXT_MAX} characters or fewer.`,
+      };
+    }
+
+    const supabase = createAdminClient();
+    const { data: existing, error: fetchError } = await supabase
+      .from("screener_questions")
+      .select(SCREENER_QUESTION_SELECT)
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .maybeSingle();
+
+    if (fetchError) {
+      const hint = schemaHint(fetchError.message);
+      return { ok: false, error: hint ?? fetchError.message };
+    }
+    if (!existing) return { ok: false, error: "Question not found." };
+
+    const { data: updated, error: updateError } = await supabase
+      .from("screener_questions")
+      .update({
+        question_text: questionText,
+        is_customized: true,
+      })
+      .eq("id", input.questionId)
+      .eq("screener_id", input.screenerId)
+      .select(SCREENER_QUESTION_SELECT)
+      .single();
+
+    if (updateError) {
+      const hint = schemaHint(updateError.message);
+      return { ok: false, error: hint ?? updateError.message };
+    }
+
+    revalidatePath(editorPath(input.screenerId));
+    revalidatePath(
+      `/workspace/screener-studio/${input.screenerId}/stakeholder-review`,
+    );
+
+    return {
+      ok: true,
+      question: mapScreenerQuestion(updated as DbScreenerQuestionRow),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not update question text.",
     };
   }
 }
@@ -912,7 +1019,14 @@ export async function deleteScreenerQuestion(input: {
     if (fetchError) return { ok: false, error: fetchError.message };
     if (!question) return { ok: false, error: "Question not found." };
     if (question.is_locked) {
-      return { ok: false, error: "Locked questions cannot be deleted." };
+      const removable = await screenerQuestionMayDeleteDespiteLock(
+        supabase,
+        input.screenerId,
+        input.questionId,
+      );
+      if (!removable) {
+        return { ok: false, error: "Locked questions cannot be deleted." };
+      }
     }
 
     const { error } = await supabase
@@ -1157,7 +1271,14 @@ export async function deleteScreenerQuestionWithChildren(input: {
     if (fetchError) return { ok: false, error: fetchError.message };
     if (!question) return { ok: false, error: "Question not found." };
     if (question.is_locked) {
-      return { ok: false, error: "Locked questions cannot be deleted." };
+      const removable = await screenerQuestionMayDeleteDespiteLock(
+        supabase,
+        input.screenerId,
+        input.questionId,
+      );
+      if (!removable) {
+        return { ok: false, error: "Locked questions cannot be deleted." };
+      }
     }
     if (question.parent_id) {
       return deleteScreenerQuestion(input);

@@ -10,6 +10,7 @@ import { ConsentBuilderModal } from "@/components/screener-editor/consent-builde
 import { ScreenerEditorToolbar } from "@/components/screener-editor/screener-editor-toolbar";
 import { QualityReviewPanel } from "@/components/screener-editor/quality-review-panel";
 import type { QuestionLibraryItem } from "@/lib/question-library/types";
+import { consentBuilderLibraryQuestionIds } from "@/lib/question-library/consent-builder";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import type { ProjectSpecs } from "@/lib/projects/project-specs";
 import type { ScreenerVersionSnapshot } from "@/app/actions/screeners";
@@ -165,8 +166,13 @@ export function ScreenerEditor({
     });
   }, []);
 
+  const consentPoolLibraryIds = useMemo(
+    () => consentBuilderLibraryQuestionIds(libraryQuestions),
+    [libraryQuestions],
+  );
+
   const handleConsentBuilderApplied = useCallback(
-    (next: ScreenerQuestion[], _addedCount: number) => {
+    (next: ScreenerQuestion[], _addedCount: number, _removedCount: number) => {
       handleQuestionsReplaced(next);
       setSelectedQuestionId(null);
       setHighlightedQuestionId(null);
@@ -300,6 +306,7 @@ export function ScreenerEditor({
         <ScreenerEditorCanvas
           screener={screener}
           questions={questions}
+          consentPoolLibraryIds={consentPoolLibraryIds}
           selectedQuestionId={selectedQuestionId}
           highlightedQuestionId={highlightedQuestionId}
           onSelectQuestion={handleSelectQuestion}

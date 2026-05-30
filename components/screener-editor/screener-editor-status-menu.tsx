@@ -107,7 +107,7 @@ export function ScreenerEditorStatusMenu({
             variant="outline"
             size="sm"
             className={cn(
-              "h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))] text-sm font-medium",
+              "h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-panel))] text-sm font-medium shadow-sm",
               s.bg,
               s.text,
               "hover:opacity-90",

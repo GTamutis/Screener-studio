@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Download,
@@ -12,6 +13,7 @@ import {
   Loader2,
   Save,
   Square,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,9 +27,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  SCREENER_TOOLBAR_BUTTON_CLASS,
+  SCREENER_TOOLBAR_STOP_BUTTON_CLASS,
+} from "@/lib/screeners/editor-toolbar-styles";
+import { openStakeholderReviewWindow } from "@/lib/screeners/stakeholder-review/paths";
 import type { ScreenerWithProject } from "@/lib/screeners/types";
+import { cn } from "@/lib/utils";
+
+function ToolbarDivider() {
+  return (
+    <div
+      className="mx-0.5 hidden h-6 w-px shrink-0 bg-border/80 sm:block"
+      aria-hidden
+    />
+  );
+}
 
 export function ScreenerEditorToolbar({
   screener,
@@ -47,6 +65,9 @@ export function ScreenerEditorToolbar({
   const [saving, startSave] = useTransition();
   const [exportingWord, setExportingWord] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+
+  const showReviews =
+    Boolean(onRunQualityReview) || Boolean(onStopQualityReview);
 
   const handleSave = () => {
     startSave(async () => {
@@ -126,6 +147,15 @@ export function ScreenerEditorToolbar({
     }
   };
 
+  const handleOpenStakeholderReview = () => {
+    const opened = openStakeholderReviewWindow(screener.id);
+    if (!opened) {
+      toast.error(
+        "Pop-up blocked. Allow pop-ups for this site to open Stakeholder Review beside the editor.",
+      );
+    }
+  };
+
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border/80 bg-[hsl(var(--workspace-panel))] px-4 shadow-sm">
       <div className="flex min-w-0 items-center gap-2 text-sm">
@@ -151,87 +181,120 @@ export function ScreenerEditorToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 gap-1.5 border-[hsl(var(--dos-navy))] bg-[hsl(var(--workspace-panel))] text-[hsl(var(--dos-navy))] hover:bg-[hsl(var(--dos-navy))]/5"
+            className={SCREENER_TOOLBAR_BUTTON_CLASS}
             onClick={onOpenConsentBuilder}
           >
             <ListChecks className="h-4 w-4" />
             <span className="hidden md:inline">Quick Add: Consents &amp; Intro</span>
-            <span className="md:hidden">Consents &amp; Intro</span>
+            <span className="md:hidden">Consents</span>
           </Button>
         ) : null}
-        {qualityReviewLoading && onStopQualityReview ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 border-destructive/40 bg-[hsl(var(--workspace-surface))] text-destructive hover:bg-destructive/5 hover:text-destructive"
-            onClick={onStopQualityReview}
-          >
-            <Square className="h-3.5 w-3.5 fill-current" />
-            Stop review
-          </Button>
-        ) : onRunQualityReview ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
-            onClick={onRunQualityReview}
-          >
-            <ClipboardCheck className="h-4 w-4" />
-            Run Quality Review
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
-          disabled={saving}
-          onClick={handleSave}
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          Save
-        </Button>
-        <ScreenerEditorStatusMenu
-          screenerId={screener.id}
-          status={screener.status}
-          majorVersion={screener.majorVersion}
-          minorVersion={screener.minorVersion}
-          onStatusChange={onScreenerVersionChange}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 border-border/80 bg-[hsl(var(--workspace-surface))]"
-              disabled={exportingWord || exportingExcel}
-            >
-              {exportingWord || exportingExcel ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+
+        {showReviews ? (
+          <>
+            <ToolbarDivider />
+            <div className="flex items-center gap-2">
+              {qualityReviewLoading && onStopQualityReview ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={SCREENER_TOOLBAR_STOP_BUTTON_CLASS}
+                  onClick={onStopQualityReview}
+                >
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                  Stop review
+                </Button>
               ) : (
-                <Download className="h-4 w-4" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn(SCREENER_TOOLBAR_BUTTON_CLASS, "pr-2")}
+                    >
+                      <ClipboardCheck className="h-4 w-4" />
+                      <span className="hidden sm:inline">Reviews</span>
+                      <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[220px]">
+                    {onRunQualityReview ? (
+                      <DropdownMenuItem onClick={onRunQualityReview}>
+                        <ClipboardCheck className="h-4 w-4" />
+                        Quality review
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleOpenStakeholderReview}>
+                      <Users className="h-4 w-4" />
+                      Stakeholder review
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        New window
+                      </span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              Export
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={exportingWord} onClick={handleExportWord}>
-              <FileText className="h-4 w-4" />
-              Export Screener
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={exportingExcel} onClick={handleExportExcel}>
-              <FileSpreadsheet className="h-4 w-4" />
-              Export Recruitment Log
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </div>
+          </>
+        ) : null}
+
+        <ToolbarDivider />
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={SCREENER_TOOLBAR_BUTTON_CLASS}
+            disabled={saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save
+          </Button>
+          <ScreenerEditorStatusMenu
+            screenerId={screener.id}
+            status={screener.status}
+            majorVersion={screener.majorVersion}
+            minorVersion={screener.minorVersion}
+            onStatusChange={onScreenerVersionChange}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={SCREENER_TOOLBAR_BUTTON_CLASS}
+                disabled={exportingWord || exportingExcel}
+              >
+                {exportingWord || exportingExcel ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={exportingWord} onClick={handleExportWord}>
+                <FileText className="h-4 w-4" />
+                Export Screener
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={exportingExcel} onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Export Recruitment Log
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

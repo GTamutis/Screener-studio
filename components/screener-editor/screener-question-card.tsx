@@ -9,6 +9,7 @@ import { ScreenerQuestionNestMenu } from "@/components/screener-editor/screener-
 import { QuestionSourceBadge } from "@/components/screener-editor/question-source-badge";
 import { Button } from "@/components/ui/button";
 import { QUESTION_TYPE_LABELS } from "@/lib/question-library/constants";
+import { isRemovableConsentBlockScreenerQuestion } from "@/lib/question-library/consent-builder";
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export function ScreenerQuestionCard({
   allQuestions,
   onQuestionsReplaced,
   structureDisabled,
+  consentPoolLibraryIds,
 }: {
   question: ScreenerQuestion;
   /** Computed label, e.g. Q1 or Q2a. */
@@ -49,10 +51,16 @@ export function ScreenerQuestionCard({
   allQuestions?: ScreenerQuestion[];
   onQuestionsReplaced?: (questions: ScreenerQuestion[]) => void;
   structureDisabled?: boolean;
+  consentPoolLibraryIds?: Set<string>;
 }) {
   const typeLabel = question.questionType
     ? QUESTION_TYPE_LABELS[question.questionType] ?? question.questionType
     : null;
+
+  const canDelete = isRemovableConsentBlockScreenerQuestion(
+    question,
+    consentPoolLibraryIds ?? new Set(),
+  );
 
   return (
     <article
@@ -139,7 +147,7 @@ export function ScreenerQuestionCard({
         ) : null}
 
         {(screenerId && allQuestions && onQuestionsReplaced) ||
-        !question.isLocked ? (
+        canDelete ? (
           <div
             className="flex flex-wrap items-center gap-2 pt-1"
             onClick={(e) => e.stopPropagation()}
@@ -154,7 +162,7 @@ export function ScreenerQuestionCard({
                 inline
               />
             ) : null}
-            {!question.isLocked ? (
+            {canDelete ? (
               <Button
                 type="button"
                 variant="outline"

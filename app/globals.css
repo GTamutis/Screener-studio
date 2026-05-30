@@ -338,6 +338,95 @@ body:has([data-workspace-shell]) [data-app-shell] {
   --muted: 222 24% 14%;
 }
 
+/* Stakeholder review popup: document scroll (not workspace overflow lock) */
+html:has([data-stakeholder-review-popup]),
+body:has([data-stakeholder-review-popup]) {
+  height: auto;
+  max-height: none;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: auto;
+}
+
+body:has([data-stakeholder-review-popup]) [data-app-shell] {
+  height: auto;
+  max-height: none;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* Stakeholder review — same workspace surface/panel tokens as screener editor */
+[data-stakeholder-review-shell] {
+  color: hsl(var(--foreground));
+}
+
+.dark [data-stakeholder-review-shell] {
+  --workspace-surface: 251 38% 7%;
+  --workspace-panel: 222 30% 13%;
+  --border: 222 22% 24%;
+  --muted: 222 24% 14%;
+}
+
+[data-stakeholder-review-shell] .sr-summary-card {
+  background-color: hsl(var(--workspace-panel));
+  border: 1px solid hsl(var(--border) / 0.8);
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px hsl(var(--dos-navy) / 0.04);
+}
+
+[data-stakeholder-review-shell] .sr-matrix-wrap {
+  background-color: hsl(var(--workspace-panel));
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 0 1px 2px hsl(var(--dos-navy) / 0.04);
+}
+
+[data-stakeholder-review-shell] .sr-matrix thead th {
+  background-color: #1f3864 !important;
+  color: #ffffff !important;
+  border-color: #1f3864 !important;
+}
+
+[data-stakeholder-review-shell] .sr-matrix tbody td {
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  color: hsl(var(--foreground));
+  vertical-align: middle;
+}
+
+[data-stakeholder-review-shell] .sr-matrix tbody tr.sr-row-even td {
+  background-color: hsl(var(--muted) / 0.35);
+}
+
+[data-stakeholder-review-shell] .sr-matrix tbody tr.sr-row-odd td {
+  background-color: hsl(var(--workspace-panel));
+}
+
+[data-stakeholder-review-shell] .sr-matrix tbody td.sr-cell-amber {
+  background-color: #fffbeb;
+}
+
+[data-stakeholder-review-shell] .sr-matrix tbody td.sr-cell-red {
+  background-color: #fef2f2;
+}
+
+.dark [data-stakeholder-review-shell] .sr-matrix tbody td.sr-cell-amber {
+  background-color: rgb(120 53 15 / 0.28);
+}
+
+.dark [data-stakeholder-review-shell] .sr-matrix tbody td.sr-cell-red {
+  background-color: rgb(127 29 29 / 0.28);
+}
+
+[data-stakeholder-review-shell] .sr-question-preview {
+  color: hsl(var(--muted-foreground));
+}
+
+[data-stakeholder-review-shell] .sr-empty-state {
+  background-color: hsl(var(--workspace-panel));
+  border-color: hsl(var(--border) / 0.8);
+  color: hsl(var(--muted-foreground));
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
