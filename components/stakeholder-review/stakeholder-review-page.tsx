@@ -10,7 +10,6 @@ import {
   getStakeholderReviewPageData,
   getStakeholderReviewPollState,
   type StakeholderReviewPageData,
-  type StakeholderReviewRecord,
   type StakeholderReviewStatus,
 } from "@/app/actions/stakeholder-reviews";
 import { StakeholderReviewMatrix } from "@/components/stakeholder-review/stakeholder-review-matrix";

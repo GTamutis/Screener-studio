@@ -172,7 +172,7 @@ export function ScreenerEditor({
   );
 
   const handleConsentBuilderApplied = useCallback(
-    (next: ScreenerQuestion[], _addedCount: number, _removedCount: number) => {
+    (next: ScreenerQuestion[]) => {
       handleQuestionsReplaced(next);
       setSelectedQuestionId(null);
       setHighlightedQuestionId(null);

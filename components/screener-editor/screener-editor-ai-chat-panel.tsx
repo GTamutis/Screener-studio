@@ -205,7 +205,7 @@ export function ScreenerEditorAiChatPanel({
         abortRef.current = null;
       }
     },
-    [streaming, messages, projectBrief, currentQuestionsSummary],
+    [streaming, messages, projectBrief, currentQuestionsSummary, setMessages],
   );
 
   const handleSubmit = (event: React.FormEvent) => {

@@ -789,7 +789,7 @@ export async function updateScreenerQuestionTextQuick(input: {
   try {
     assertUuid(input.screenerId, "screener id");
     assertUuid(input.questionId, "question id");
-    const screener = await getScreenerById(input.screenerId);
+    await getScreenerById(input.screenerId);
 
     const questionText = normalizeWhitespace(input.questionText);
     if (!questionText) {
