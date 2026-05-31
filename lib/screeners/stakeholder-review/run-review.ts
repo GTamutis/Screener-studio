@@ -64,12 +64,21 @@ async function fetchQuestionsForReview(screenerId: string) {
   );
 }
 
-async function clearExistingReviews(screenerId: string): Promise<void> {
+async function clearExistingReviews(
+  screenerId: string,
+  exceptReviewIds: string[] = [],
+): Promise<void> {
   const supabase = createAdminClient();
-  const { error } = await supabase
+  let query = supabase
     .from("stakeholder_reviews")
     .delete()
     .eq("screener_id", screenerId);
+
+  if (exceptReviewIds.length > 0) {
+    query = query.not("id", "in", `(${exceptReviewIds.join(",")})`);
+  }
+
+  const { error } = await query;
 
   if (error) {
     const hint = stakeholderStatusSchemaHint(error.message);
@@ -79,18 +88,29 @@ async function clearExistingReviews(screenerId: string): Promise<void> {
 
 async function insertReviews(
   rows: ReturnType<typeof modelResponseToInsertRows>,
-): Promise<number> {
-  if (rows.length === 0) return 0;
+): Promise<{ insertedIds: string[]; totalIssues: number }> {
+  if (rows.length === 0) return { insertedIds: [], totalIssues: 0 };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("stakeholder_reviews").insert(rows);
+  const { data, error } = await supabase
+    .from("stakeholder_reviews")
+    .insert(rows)
+    .select("id");
 
   if (error) {
     const hint = stakeholderStatusSchemaHint(error.message);
     throw new Error(hint ?? error.message);
   }
 
-  return rows.length;
+  const insertedIds = (data ?? [])
+    .map((row) => (typeof row.id === "string" ? row.id : null))
+    .filter((id): id is string => Boolean(id));
+
+  if (insertedIds.length !== rows.length) {
+    throw new Error("Could not confirm stakeholder review rows were saved.");
+  }
+
+  return { insertedIds, totalIssues: rows.length };
 }
 
 export async function runStakeholderReview(
@@ -103,8 +123,6 @@ export async function runStakeholderReview(
   await setStakeholderReviewStatus(screenerId, "running");
 
   try {
-    await clearExistingReviews(screenerId);
-
     const anthropic = new Anthropic({ apiKey: options.apiKey });
     const message = await anthropic.messages.create(
       {
@@ -135,10 +153,12 @@ export async function runStakeholderReview(
     }
 
     const rows = modelResponseToInsertRows(screenerId, questions, parsed);
-    const total_issues = await insertReviews(rows);
+    const { insertedIds, totalIssues } = await insertReviews(rows);
+    // Keep the previous successful review visible until replacement rows exist.
+    await clearExistingReviews(screenerId, insertedIds);
 
     await setStakeholderReviewStatus(screenerId, "complete");
-    return { total_issues };
+    return { total_issues: totalIssues };
   } catch (error) {
     await setStakeholderReviewStatus(screenerId, "failed").catch((statusError) => {
       console.error(
