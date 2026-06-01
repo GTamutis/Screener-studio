@@ -62,7 +62,8 @@ export function buildStakeholderReviewQuestionsSection(
   const flat = flattenQuestionTree(tree);
   const lines: string[] = [];
 
-  for (const [index, item] of flat.entries()) {
+  for (let index = 0; index < flat.length; index++) {
+    const item = flat[index];
     const type = item.question.questionType ?? "unknown";
     const options = formatAnswerOptions(item.question.answerOptions);
     const reviewPosition = index + 1;
