@@ -133,6 +133,8 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "Something went wrong.";
     const status = /not found/i.test(message)
       ? 404
+      : /already running/i.test(message)
+        ? 409
       : /parse|empty response/i.test(message)
         ? 502
         : 500;

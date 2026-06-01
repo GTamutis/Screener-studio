@@ -32,9 +32,26 @@ function stakeholderStatusSchemaHint(message: string): string | null {
   return null;
 }
 
+async function claimStakeholderReviewRun(screenerId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("screeners")
+    .update({ stakeholder_review_status: "running" })
+    .eq("id", screenerId)
+    .or("stakeholder_review_status.is.null,stakeholder_review_status.neq.running")
+    .select("id");
+
+  if (error) {
+    const hint = stakeholderStatusSchemaHint(error.message);
+    throw new Error(hint ?? error.message);
+  }
+
+  return (data ?? []).length > 0;
+}
+
 async function setStakeholderReviewStatus(
   screenerId: string,
-  status: "running" | "complete" | "failed" | null,
+  status: "complete" | "failed" | null,
 ): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -64,33 +81,46 @@ async function fetchQuestionsForReview(screenerId: string) {
   );
 }
 
-async function clearExistingReviews(screenerId: string): Promise<void> {
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("stakeholder_reviews")
-    .delete()
-    .eq("screener_id", screenerId);
-
-  if (error) {
-    const hint = stakeholderStatusSchemaHint(error.message);
-    throw new Error(hint ?? error.message);
-  }
-}
-
 async function insertReviews(
   rows: ReturnType<typeof modelResponseToInsertRows>,
-): Promise<number> {
-  if (rows.length === 0) return 0;
+): Promise<string[]> {
+  if (rows.length === 0) return [];
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("stakeholder_reviews").insert(rows);
+  const { data, error } = await supabase
+    .from("stakeholder_reviews")
+    .insert(rows)
+    .select("id");
 
   if (error) {
     const hint = stakeholderStatusSchemaHint(error.message);
     throw new Error(hint ?? error.message);
   }
 
-  return rows.length;
+  return (data ?? []).map((row) => row.id as string);
+}
+
+async function deleteSupersededReviews(
+  screenerId: string,
+  replacementIds: string[],
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } =
+    replacementIds.length === 0
+      ? await supabase
+          .from("stakeholder_reviews")
+          .delete()
+          .eq("screener_id", screenerId)
+      : await supabase
+          .from("stakeholder_reviews")
+          .delete()
+          .eq("screener_id", screenerId)
+          .not("id", "in", `(${replacementIds.join(",")})`);
+
+  if (error) {
+    const hint = stakeholderStatusSchemaHint(error.message);
+    throw new Error(hint ?? error.message);
+  }
 }
 
 export async function runStakeholderReview(
@@ -100,11 +130,12 @@ export async function runStakeholderReview(
   const screener = await getScreenerById(screenerId);
   const questions = await fetchQuestionsForReview(screenerId);
 
-  await setStakeholderReviewStatus(screenerId, "running");
+  const didClaimRun = await claimStakeholderReviewRun(screenerId);
+  if (!didClaimRun) {
+    throw new Error("A stakeholder review is already running for this screener.");
+  }
 
   try {
-    await clearExistingReviews(screenerId);
-
     const anthropic = new Anthropic({ apiKey: options.apiKey });
     const message = await anthropic.messages.create(
       {
@@ -135,10 +166,11 @@ export async function runStakeholderReview(
     }
 
     const rows = modelResponseToInsertRows(screenerId, questions, parsed);
-    const total_issues = await insertReviews(rows);
+    const insertedReviewIds = await insertReviews(rows);
+    await deleteSupersededReviews(screenerId, insertedReviewIds);
 
     await setStakeholderReviewStatus(screenerId, "complete");
-    return { total_issues };
+    return { total_issues: rows.length };
   } catch (error) {
     await setStakeholderReviewStatus(screenerId, "failed").catch((statusError) => {
       console.error(

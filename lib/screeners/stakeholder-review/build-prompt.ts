@@ -62,13 +62,14 @@ export function buildStakeholderReviewQuestionsSection(
   const flat = flattenQuestionTree(tree);
   const lines: string[] = [];
 
-  for (const item of flat) {
+  for (let index = 0; index < flat.length; index++) {
+    const item = flat[index];
     const type = item.question.questionType ?? "unknown";
     const options = formatAnswerOptions(item.question.answerOptions);
-    const position = item.topLevelNumber ?? item.question.position;
+    const reviewPosition = index + 1;
     const indent = item.isSubQuestion ? "  " : "";
     lines.push(
-      `${indent}${item.label} (position: ${position}): ${item.question.questionText} | Type: ${type} | Options: ${options}`,
+      `${indent}${item.label} (review_position: ${reviewPosition}): ${item.question.questionText} | Type: ${type} | Options: ${options}`,
     );
   }
 
@@ -118,7 +119,7 @@ For each persona, for each question (and for the screener overall if applicable)
 - Write feedback_text: 1-3 sentences explaining the concern or confirmation of no issue
 - Only include entries for amber and red — omit green entries to keep the response concise
 
-When referencing a specific question, set question_position to the numeric position shown in parentheses on that question's line (top-level position number). Use null for overall screener feedback.
+When referencing a specific question, set question_position to the numeric review_position shown in parentheses on that question's line. Use null for overall screener feedback.
 
 Return ONLY a valid JSON object in exactly this format:
 {
@@ -130,5 +131,5 @@ Return ONLY a valid JSON object in exactly this format:
   "legal_regulatory": [...],
   "medical": [...]
 }
-Where question_position is the question's position number (1-indexed top-level) or null for overall feedback.`;
+Where question_position is the question's review_position number or null for overall feedback.`;
 }
