@@ -1,22 +1,18 @@
 import type { ScreenerQuestion } from "@/lib/screeners/question-types";
+import { buildQuestionTree, flattenQuestionTree } from "@/lib/screeners/question-tree";
 import type { StakeholderReviewPersona } from "@/lib/screeners/stakeholder-review/constants";
 import type {
   StakeholderReviewInsertRow,
   StakeholderReviewModelResponse,
 } from "@/lib/screeners/stakeholder-review/types";
 
-/** Top-level question id for a given screener position (sub-questions share position). */
+/** Question id for the 1-indexed review_position shown to the model. */
 export function questionIdForPosition(
   questions: ScreenerQuestion[],
   position: number,
 ): string | null {
-  const topLevel = questions.find(
-    (q) => q.parentId === null && q.position === position,
-  );
-  if (topLevel) return topLevel.id;
-
-  const any = questions.find((q) => q.position === position);
-  return any?.id ?? null;
+  const flat = flattenQuestionTree(buildQuestionTree(questions));
+  return flat[position - 1]?.question.id ?? null;
 }
 
 export function modelResponseToInsertRows(
